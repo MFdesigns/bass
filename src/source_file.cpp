@@ -14,28 +14,17 @@
  * limitations under the License.
  */
 
-#include "assembler.h"
 #include "source_file.h"
-#include <filesystem>
-#include <iostream>
+#include <fstream>
 
-int main(int argc, char* argv[]) {
-    if (argc < 2) {
-        std::cout << "usage: uvm-assembler <path>\n";
-        return -1;
-    }
+bool readSource(std::filesystem::path& p, uint8_t** buffer, uint32_t& size) {
+    // TODO: add error checking
+    std::ifstream str{p};
+    str.seekg(0, std::ios::end);
+    size = str.tellg();
+    str.seekg(0, std::ios::beg);
 
-    std::filesystem::path p{argv[1]};
-    if (!std::filesystem::exists(p)) {
-        std::cout << "Error: source file does not exist\n";
-        return -1;
-    }
-
-    uint8_t* source = nullptr;
-    uint32_t size = 0;
-    bool success = readSource(p, &source, size);
-    if (!sucess) {
-        std::cout << "Error: could not read source file\n";
-        return -1;
-    }
+    *buffer = new uint8_t[size];
+    str.read((char*)*buffer, size);
+    return true;
 }

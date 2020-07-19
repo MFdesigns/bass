@@ -14,28 +14,14 @@
  * limitations under the License.
  */
 
-#include "assembler.h"
-#include "source_file.h"
-#include <filesystem>
-#include <iostream>
+#pragma once
+#include <cstdint>
 
-int main(int argc, char* argv[]) {
-    if (argc < 2) {
-        std::cout << "usage: uvm-assembler <path>\n";
-        return -1;
-    }
+class Assembler {
+  public:
+    Assembler(uint8_t* source, uint32_t sourceSize);
 
-    std::filesystem::path p{argv[1]};
-    if (!std::filesystem::exists(p)) {
-        std::cout << "Error: source file does not exist\n";
-        return -1;
-    }
-
-    uint8_t* source = nullptr;
-    uint32_t size = 0;
-    bool success = readSource(p, &source, size);
-    if (!sucess) {
-        std::cout << "Error: could not read source file\n";
-        return -1;
-    }
-}
+  private:
+    uint8_t* Source;
+    uint32_t SourceSize;
+};
