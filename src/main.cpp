@@ -34,8 +34,11 @@ int main(int argc, char* argv[]) {
     uint8_t* source = nullptr;
     uint32_t size = 0;
     bool success = readSource(p, &source, size);
-    if (!sucess) {
+    if (!success) {
         std::cout << "Error: could not read source file\n";
         return -1;
     }
+
+    Assembler asmr{source, size};
+    asmr.tokenize();
 }
