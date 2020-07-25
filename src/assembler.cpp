@@ -22,6 +22,7 @@ Assembler::Assembler(uint8_t* source, uint32_t sourceSize)
     Cursor = 0;
     CursorLineRow = 1;
     CursorLineColumn = 1;
+    TokCursor = 0;
 }
 
 void Assembler::incLineRow() {
@@ -289,5 +290,239 @@ bool Assembler::tokenize() {
             eof = eatChar(c);
         }
     }
+    return true;
+}
+
+void Assembler::parseRegOffset(Instruction* instr) {
+    RegisterId* base = nullptr;
+    RegisterId* offset = nullptr;
+    IntegerNumber* intNum = nullptr;
+    bool positive = false;
+
+    Token t = Tokens[TokCursor += 1];
+    if (t.Type == TokenType::REGISTER_DEFINITION) {
+        std::string regName{(char*)&Source[t.Index], t.Size};
+        uint8_t regId = getRegisterTypeFromName(regName);
+        RegisterId* reg = new RegisterId(t.Index, t.LineRow, t.LineColumn, regId);
+        base = reg;
+        TokCursor++;
+        t = Tokens[TokCursor];
+    } else {
+        std::cout << "Error: expected register in register offset\n";
+        return;
+    }
+
+    if (t.Type == TokenType::RIGHT_SQUARE_BRACKET) {
+        RegisterOffset* regOff = new RegisterOffset(t.Index, t.LineRow, t.LineColumn, RegisterLayout::REG, base, offset, intNum);
+        (*instr).Parameters.push_back(regOff);
+        return;
+    } else if (t.Type == TokenType::PLUS_SIGN) {
+        positive = true;
+    } else if (t.Type == TokenType::MINUS_SIGN) {
+        positive = false;
+    } else {
+        std::cout << "Error: unexpected token in register offset\n";
+        return;
+    }
+    t = Tokens[TokCursor += 1];
+
+    if (t.Type == TokenType::INTEGER_NUMBER) {
+        Token peek = Tokens[TokCursor + 1];
+        if (peek.Type == TokenType::RIGHT_SQUARE_BRACKET) {
+            std::string name{(char*)&Source[t.Index], t.Size};
+            uint64_t num = std::atoll(name.c_str());
+            intNum = new IntegerNumber(t.Index, t.LineRow, t.LineColumn, num);
+            RegisterLayout layout = RegisterLayout::REG;
+            // TODO: support different int sizes
+            if (positive) {
+                layout = RegisterLayout::REG_P_I32;
+            } else {
+                layout = RegisterLayout::REG_M_I32;
+            }
+            RegisterOffset* regOff = new RegisterOffset(t.Index, t.LineRow, t.LineColumn, layout, base, offset, intNum);
+            (*instr).Parameters.push_back(regOff);
+            TokCursor++;
+        } else {
+            std::cout << "Error: expected ] bracket\n";
+            return;
+        }
+    } else if (t.Type == TokenType::REGISTER_DEFINITION) {
+        std::string regName{(char*)&Source[t.Index], t.Size};
+        uint8_t regId = getRegisterTypeFromName(regName);
+        RegisterId* reg = new RegisterId(t.Index, t.LineRow, t.LineColumn, regId);
+        offset = reg;
+        TokCursor++;
+        t = Tokens[TokCursor];
+
+        if (t.Type == TokenType::ASTERISK) {
+            TokCursor++;
+            t = Tokens[TokCursor];
+        } else {
+            std::cout << "Error: expected * after offset\n";
+            return;
+        }
+
+        std::string name{(char*)&Source[t.Index], t.Size};
+        uint64_t num = std::atoll(name.c_str());
+        intNum = new IntegerNumber(t.Index, t.LineRow, t.LineColumn, num);
+        TokCursor++;
+        t = Tokens[TokCursor];
+
+        RegisterLayout layout = RegisterLayout::REG;
+        if (t.Type == TokenType::RIGHT_SQUARE_BRACKET) {
+            // TODO: support different int sizes
+            if (positive) {
+                layout = RegisterLayout::REG_P_REG_T_I16;
+            } else {
+                layout = RegisterLayout::REG_M_REG_T_I16;
+            }
+            RegisterOffset* regOff = new RegisterOffset(t.Index, t.LineRow, t.LineColumn, layout, base, offset, intNum);
+            (*instr).Parameters.push_back(regOff);
+        } else {
+            std::cout << "Error: expected closing bracket after factor\n";
+            return;
+        }
+
+    } else {
+        std::cout << "Error: expected register or int number as offset\n";
+        return;
+    }
+}
+
+bool Assembler::buildAST() {
+    ASTState state = ASTState::GLOBAL_SCOPE;
+    FuncDef* function = nullptr;
+    Instruction* instr = nullptr;
+
+    while (TokCursor < Tokens.size()) {
+        Token t = Tokens[TokCursor];
+        switch (state) {
+        case ASTState::GLOBAL_SCOPE: {
+            Token id = Tokens[TokCursor];
+            if (id.Type == TokenType::IDENTIFIER) {
+                if (Tokens[TokCursor + 1].Type ==
+                    TokenType::LEFT_CURLY_BRACKET) {
+                    std::string name{(char*)&Source[id.Index], id.Size};
+                    function =
+                        new FuncDef(id.Index, id.LineRow, id.LineColumn, name);
+                    AST.push_back(function);
+                    state = ASTState::FUNC_BODY;
+                    TokCursor += 2;
+                } else {
+                    std::cout << "Error: expected open curly bracket after "
+                                 "function identifier\n";
+                    return false;
+                }
+            } else {
+                std::cout << "Error: expected function identifier\n";
+                return false;
+            }
+        } break;
+        case ASTState::FUNC_BODY: {
+            if (t.Type == TokenType::INSTRUCTION) {
+                std::string name{(char*)&Source[t.Index], t.Size};
+                instr = new Instruction(t.Index, t.LineRow, t.LineColumn, name);
+                (*function).Body.push_back(instr);
+
+                // Check if next token terminates instruction and only set state to
+                // parse its arguments if there are any
+                Token peek = Tokens[TokCursor + 1];
+                if (peek.Type != TokenType::INSTRUCTION && peek.Type != TokenType::AT_SIGN && peek.Type != TokenType::RIGHT_CURLY_BRACKET) {
+                    state = ASTState::INSTR_BODY;
+                }
+                TokCursor++;
+            } else if (t.Type == TokenType::AT_SIGN) {
+                Token id = Tokens[TokCursor + 1];
+                if (id.Type == TokenType::IDENTIFIER) {
+                    std::string name{(char*)&Source[id.Index], id.Size};
+                    LabelDef* labelDef =
+                        new LabelDef(t.Index, t.LineRow, t.LineColumn, name);
+                    (*function).Body.push_back(labelDef);
+                    TokCursor += 2;
+                } else {
+                    std::cout << "Expected identifier after label keyword\n";
+                    return false;
+                }
+            } else if (t.Type == TokenType::RIGHT_CURLY_BRACKET) {
+                state = ASTState::GLOBAL_SCOPE;
+                TokCursor++;
+            } else {
+                std::cout << "Error: expected instruction or label after "
+                             "inside function body\n";
+                return false;
+            }
+        } break;
+        case ASTState::INSTR_BODY: {
+            if (t.Type == TokenType::TYPE_INFO) {
+                std::string name{(char*)&Source[t.Index], t.Size};
+                UVMType type = getUVMTypeFromName(name);
+                TypeInfo* typeInfo = new TypeInfo(t.Index, t.LineRow, t.LineColumn, type);
+                (*instr).Parameters.push_back(typeInfo);
+                TokCursor++;
+                t = Tokens[TokCursor];
+
+                if (t.Type == TokenType::INSTRUCTION || t.Type == TokenType::AT_SIGN || t.Type == TokenType::RIGHT_CURLY_BRACKET) {
+                    state = ASTState::FUNC_BODY;
+                    continue;
+                }
+            }
+
+            bool end = false;
+            while (!end) {
+                switch (t.Type) {
+                    case TokenType::IDENTIFIER: {
+                        std::string name{(char*)&Source[t.Index], t.Size};
+                        Identifier* id = new Identifier(t.Index, t.LineRow, t.LineColumn, name);
+                        (*instr).Parameters.push_back(id);
+                        TokCursor++;
+                    }
+                    break;
+                    case TokenType::REGISTER_DEFINITION: {
+                        std::string regName{(char*)&Source[t.Index], t.Size};
+                        uint8_t regId = getRegisterTypeFromName(regName);
+                        RegisterId* reg = new RegisterId(t.Index, t.LineRow, t.LineColumn, regId);
+                        (*instr).Parameters.push_back(reg);
+                        TokCursor++;
+                    }
+                    break;
+                    case TokenType::LEFT_SQUARE_BRACKET:
+                        parseRegOffset(instr);
+                        TokCursor++;
+                    break;
+                    case TokenType::INTEGER_NUMBER: {
+                        std::string name{(char*)&Source[t.Index], t.Size};
+                        uint64_t num = std::atoll(name.c_str());
+                        IntegerNumber* id = new IntegerNumber(t.Index, t.LineRow, t.LineColumn, num);
+                        (*instr).Parameters.push_back(id);
+                        TokCursor++;
+                    }
+                    break;
+                    case TokenType::FLOAT_NUMBER: {
+                        std::string name{(char*)&Source[t.Index], t.Size};
+                        double num = std::atof(name.c_str());
+                        FloatNumber* id = new FloatNumber(t.Index, t.LineRow, t.LineColumn, num);
+                        (*instr).Parameters.push_back(id);
+                        TokCursor++;
+                    }
+                    break;
+                    default:
+                        std::cout << "Error: Expected parameter\n";
+                        return false;
+                    break;
+                }
+                t = Tokens[TokCursor];
+
+                if (t.Type == TokenType::INSTRUCTION || t.Type == TokenType::AT_SIGN || t.Type == TokenType::RIGHT_CURLY_BRACKET)  {
+                    state = ASTState::FUNC_BODY;
+                    end = true;
+                } else if (t.Type == TokenType::COMMA) {
+                    TokCursor++;
+                    t = Tokens[TokCursor];
+                }
+            }
+        } break;
+        }
+    }
+
     return true;
 }

@@ -15,11 +15,14 @@
  */
 
 #pragma once
+#include "ast.h"
 #include "token.h"
 #include <array>
 #include <cstdint>
 #include <iostream>
 #include <vector>
+
+enum class ASTState { GLOBAL_SCOPE, FUNC_BODY, INSTR_BODY, INSTR_PARAM };
 
 const static std::array<std::string, 51> INSTRUCTIONS = {
     "nop",  "push", "pop",  "load", "loadf", "store", "storef", "copy", "copyf",
@@ -41,6 +44,7 @@ class Assembler {
   public:
     Assembler(uint8_t* source, uint32_t sourceSize);
     bool tokenize();
+    bool buildAST();
 
   private:
     uint8_t* Source;
@@ -48,7 +52,10 @@ class Assembler {
     uint32_t Cursor;
     uint32_t CursorLineRow;
     uint32_t CursorLineColumn;
+    uint64_t TokCursor;
     std::vector<Token> Tokens;
+    std::vector<ASTNode*> AST;
+    void parseRegOffset(Instruction* instr);
     void tokenizerError(const char* msg);
     void incLineRow();
     bool eatChar(uint8_t& out);

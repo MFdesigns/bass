@@ -40,5 +40,13 @@ int main(int argc, char* argv[]) {
     }
 
     Assembler asmr{source, size};
-    asmr.tokenize();
+    bool tokSuccess = asmr.tokenize();
+    if (!tokSuccess) {
+        return -1;
+    }
+
+    bool astSuccess = asmr.buildAST();
+    if (!astSuccess) {
+        return -1;
+    }
 }
