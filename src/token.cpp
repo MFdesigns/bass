@@ -13,3 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+#include "token.h"
+
+Token::Token(TokenType type,
+             uint32_t index,
+             uint32_t size,
+             uint32_t lineRow,
+             uint32_t lineCol)
+    : Type(type), Index(index), Size(size), LineRow(lineRow),
+      LineCol(lineCol){};

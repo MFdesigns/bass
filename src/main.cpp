@@ -15,8 +15,7 @@
  */
 
 #include "assembler.h"
-#include "source_file.h"
-#include <filesystem>
+#include <cstdint>
 #include <iostream>
 
 int main(int argc, char* argv[]) {
@@ -25,28 +24,17 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
-    std::filesystem::path p{argv[1]};
-    if (!std::filesystem::exists(p)) {
-        std::cout << "Error: source file does not exist\n";
+    Assembler asmler{};
+
+    bool fileReadSucc = asmler.readSource(argv[1]);
+    if (!fileReadSucc) {
+        std::cout << "[ERROR] Could not read source file '" << argv[1] << "'\n";
         return -1;
     }
 
-    uint8_t* source = nullptr;
-    uint32_t size = 0;
-    bool success = readSource(p, &source, size);
-    if (!success) {
-        std::cout << "Error: could not read source file\n";
-        return -1;
-    }
-
-    Assembler asmr{source, size};
-    bool tokSuccess = asmr.tokenize();
-    if (!tokSuccess) {
-        return -1;
-    }
-
-    bool astSuccess = asmr.buildAST();
-    if (!astSuccess) {
+    bool status = asmler.assemble();
+    if (!status) {
+        std::cout << "Assembler exited with an error\n";
         return -1;
     }
 }

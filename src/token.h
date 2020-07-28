@@ -20,25 +20,31 @@
 enum class TokenType {
     IDENTIFIER,
     INSTRUCTION,
+    LABEL_DEF,
     TYPE_INFO,
     REGISTER_DEFINITION,
     PLUS_SIGN,
     MINUS_SIGN,
     ASTERISK,
     COMMA,
-    AT_SIGN,
     LEFT_SQUARE_BRACKET,
     RIGHT_SQUARE_BRACKET,
     LEFT_CURLY_BRACKET,
     RIGHT_CURLY_BRACKET,
     INTEGER_NUMBER,
-    FLOAT_NUMBER
+    FLOAT_NUMBER,
+    EOL,
 };
 
 struct Token {
+    Token(TokenType type,
+          uint32_t index,
+          uint32_t size,
+          uint32_t lineRow,
+          uint32_t lineCol);
     TokenType Type;
     uint32_t Index;
     uint32_t Size;
     uint32_t LineRow;
-    uint32_t LineColumn;
+    uint32_t LineCol;
 };

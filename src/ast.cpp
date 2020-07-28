@@ -57,7 +57,6 @@ uint8_t getRegisterTypeFromName(std::string& regName) {
     return id;
 }
 
-
 ASTNode::ASTNode(ASTType type, uint32_t pos, uint32_t lineNr, uint32_t lineCol)
     : Type(type), Position(pos), LineNumber(lineNr), LineColumn(lineCol) {}
 
