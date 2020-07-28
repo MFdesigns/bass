@@ -15,9 +15,9 @@
  */
 
 #pragma once
-#include "ast.h"
+#include "ast.hpp"
 #include "scanner.hpp"
-#include "token.h"
+#include "token.hpp"
 #include <cstdint>
 #include <iostream>
 #include <vector>

@@ -1,8 +1,7 @@
 add_executable(uvm-assembler
     main.cpp
-    assembler.cpp assembler.h
+    assembler.cpp assembler.hpp
     scanner.cpp scanner.hpp
-    source_file.cpp source_file.h
-    token.cpp token.h
-    ast.cpp ast.h
+    token.cpp token.hpp
+    ast.cpp ast.hpp
 )

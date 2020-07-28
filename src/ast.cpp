@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "ast.h"
+#include "ast.hpp"
 
 UVMType getUVMTypeFromName(std::string& typeName) {
     UVMType type = UVMType::NONE;

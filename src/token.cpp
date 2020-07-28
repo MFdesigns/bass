@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "token.h"
+#include "token.hpp"
 
 Token::Token(TokenType type,
              uint32_t index,

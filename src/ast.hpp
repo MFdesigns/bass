@@ -15,7 +15,7 @@
  */
 
 #pragma once
-#include "token.h"
+#include "token.hpp"
 #include <cstdint>
 #include <string>
 #include <vector>

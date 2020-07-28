@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "assembler.h"
+#include "assembler.hpp"
 #include <cstdint>
 #include <iostream>
 
