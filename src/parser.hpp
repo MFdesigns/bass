@@ -18,18 +18,25 @@
 #include "ast.hpp"
 #include "scanner.hpp"
 #include "token.hpp"
-#include <cstdint>
-#include <iostream>
 #include <vector>
 
-class Assembler {
+enum class ParseState { GLOBAL_SCOPE, FUNC_BODY, INSTR_BODY, END };
+
+class Parser {
   public:
-    Assembler();
-    bool readSource(char* pathName);
-    bool assemble();
+    Parser(Source* src, std::vector<Token>* tokens, Global* global);
+    bool buildAST();
 
   private:
-    Source* Src = nullptr;
-    Scanner* Scan = nullptr;
-    std::vector<Token> Tokens;
+    uint64_t Cursor = 0;
+    std::vector<Token>* Tokens;
+    Global* Glob;
+    Source* Src;
+    UVMType getUVMType(Token* tok);
+    uint8_t getRegisterTypeFromName(std::string& regName);
+    int64_t strToInt(std::string& str);
+    Token* eatToken();
+    bool peekToken(Token** tok);
+    bool parseRegOffset(Instruction* instr);
+    void throwError(const char* msg, Token& tok);
 };

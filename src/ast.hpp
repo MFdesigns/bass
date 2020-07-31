@@ -21,6 +21,7 @@
 #include <vector>
 
 enum class ASTType {
+    GLOBAL,
     FUNCTION_DEFINTION,
     LABEL_DEFINITION,
     IDENTIFIER,
@@ -47,7 +48,6 @@ enum class RegisterLayout {
 };
 
 enum class UVMType {
-    NONE,
     I8,
     I16,
     I32,
@@ -55,9 +55,6 @@ enum class UVMType {
     F32,
     F64,
 };
-
-UVMType getUVMTypeFromName(std::string& typeName);
-uint8_t getRegisterTypeFromName(std::string& regName);
 
 class ASTNode {
   public:
@@ -67,6 +64,12 @@ class ASTNode {
     uint32_t LineNumber;
     uint32_t LineColumn;
     virtual ~ASTNode() = default;
+};
+
+class Global : public ASTNode {
+  public:
+    Global(uint32_t pos, uint32_t lineNr, uint32_t lineCol);
+    std::vector<ASTNode*> Body;
 };
 
 class FuncDef : public ASTNode {
@@ -98,7 +101,7 @@ class Instruction : public ASTNode {
                 uint32_t lineCol,
                 std::string name);
     std::string Name;
-    std::vector<ASTNode*> Parameters;
+    std::vector<ASTNode*> Params;
 };
 
 class FloatNumber : public ASTNode {
@@ -109,11 +112,8 @@ class FloatNumber : public ASTNode {
 
 class IntegerNumber : public ASTNode {
   public:
-    IntegerNumber(uint32_t pos,
-                  uint32_t lineNr,
-                  uint32_t lineCol,
-                  uint64_t num);
-    uint64_t Num;
+    IntegerNumber(uint32_t pos, uint32_t lineNr, uint32_t lineCol, int64_t num);
+    int64_t Num;
 };
 
 class RegisterId : public ASTNode {

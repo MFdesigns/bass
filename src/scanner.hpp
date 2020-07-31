@@ -45,6 +45,7 @@ class Source {
     uint8_t* getData();
     bool getChar(uint32_t index, uint8_t& c);
     bool getSubStr(uint32_t index, uint32_t size, std::string& out);
+    bool getLine(uint32_t index, std::string& out, uint32_t& lineIndex);
 
   private:
     uint8_t* Data = nullptr; // TODO: Make const

@@ -56,6 +56,33 @@ bool Source::getSubStr(uint32_t index, uint32_t size, std::string& out) {
     }
 }
 
+bool Source::getLine(uint32_t index, std::string& out, uint32_t& lineIndex) {
+    if (index >= Size) {
+        return false;
+    }
+
+    // Find the begining of the line
+    bool foundSOL = false;
+    while (!foundSOL && (int32_t)index - 1 > 0) {
+        if (Data[index - 1] == '\n') {
+            foundSOL = true;
+        } else {
+            index--;
+        }
+    }
+    lineIndex = index;
+
+    // Parse the whole line
+    uint8_t c = Data[index];
+    while (c != '\n' && index < Size) {
+        index++;
+        out.push_back(c);
+        c = Data[index];
+    }
+
+    return true;
+}
+
 Scanner::Scanner(Source* src, std::vector<Token>* outTokens)
     : Src(src), Tokens(outTokens) {
     Cursor = 0;
@@ -152,23 +179,19 @@ bool Scanner::isRegister(std::string& token) {
 }
 
 void Scanner::throwError(const char* msg, uint32_t start) {
-    uint8_t* data = Src->getData();
+    std::string line;
+    uint32_t lineIndex = 0;
+    Src->getLine(start, line, lineIndex);
+    std::string lineNr = std::to_string(lineIndex);
 
-    // Parse the whole line where the error occured
-    std::string line{};
-    uint32_t lineCursor = Cursor - (CursorLineColumn - 1);
-    uint32_t errOffset = start - lineCursor;
-    uint8_t c = data[lineCursor];
-    while (c != '\n') {
-        line.push_back(data[lineCursor]);
-        lineCursor++;
-        c = data[lineCursor];
-    }
+    uint32_t errOffset = start - lineIndex;
+    uint8_t c = 0;
+    Src->getChar(Cursor, c);
 
     std::string lineNumber = std::to_string(CursorLineRow);
     std::cout << "[Syntax Error] " << msg << " at Ln " << CursorLineRow
-              << ", Col " << CursorLineColumn << " at char '" << data[Cursor]
-              << "' (" << (uint16_t)data[Cursor] << ")\n"
+              << ", Col " << CursorLineColumn << " at char '" << c << "' (U+"
+              << (uint16_t)c << ")\n"
               << "  " << lineNumber << " | " << line << '\n'
               << "  " << std::setw(2 + lineNumber.size()) << std::setfill(' ')
               << " |" << std::setw(errOffset + 1) << std::setfill(' ') << ' '
@@ -385,10 +408,9 @@ bool Scanner::scanSource() {
                 } else {
                     // If the token is not an instruciton, type info or register
                     // then it must be an identifier
-                    addToken(TokenType::LABEL_DEF, Cursor, CursorLineRow,
-                             CursorLineColumn, 1);
+                    addToken(TokenType::LABEL_DEF, tokPos, tokLineRow,
+                             tokLineColumn, token.size() + 1);
                 }
-                eof = eatChar(c);
             } break;
             case '\n': {
                 // Only add EOL tokens once in a row
@@ -398,8 +420,7 @@ bool Scanner::scanSource() {
                              CursorLineColumn, 1);
                 }
                 incLineRow();
-            }
-                break;
+            } break;
             default:
                 throwError("Unexpected character", Cursor);
                 return false;
@@ -407,5 +428,9 @@ bool Scanner::scanSource() {
             eof = eatChar(c);
         }
     }
+
+    addToken(TokenType::END_OF_FILE, Cursor, CursorLineRow, CursorLineColumn,
+             1);
+
     return true;
 }

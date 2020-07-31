@@ -34,6 +34,7 @@ enum class TokenType {
     INTEGER_NUMBER,
     FLOAT_NUMBER,
     EOL,
+    END_OF_FILE,
 };
 
 struct Token {
