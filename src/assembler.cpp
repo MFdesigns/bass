@@ -63,5 +63,10 @@ bool Assembler::assemble() {
         return false;
     }
 
+    bool typeValid = parse.typeCheck();
+    if (!typeValid) {
+        return false;
+    }
+
     return true;
 }

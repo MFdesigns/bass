@@ -16,6 +16,7 @@
 
 #pragma once
 #include "ast.hpp"
+#include "instruction.hpp"
 #include "scanner.hpp"
 #include "token.hpp"
 #include <vector>
@@ -26,17 +27,19 @@ class Parser {
   public:
     Parser(Source* src, std::vector<Token>* tokens, Global* global);
     bool buildAST();
+    bool typeCheck();
 
   private:
     uint64_t Cursor = 0;
     std::vector<Token>* Tokens;
     Global* Glob;
     Source* Src;
-    UVMType getUVMType(Token* tok);
+    uint8_t getUVMType(Token* tok);
     uint8_t getRegisterTypeFromName(std::string& regName);
     int64_t strToInt(std::string& str);
     Token* eatToken();
     bool peekToken(Token** tok);
     bool parseRegOffset(Instruction* instr);
     void throwError(const char* msg, Token& tok);
+    bool typeCheckInstrParams(Instruction* instr);
 };

@@ -5,4 +5,5 @@ add_executable(uvm-assembler
     scanner.cpp scanner.hpp
     ast.cpp ast.hpp
     parser.cpp parser.hpp
+    instruction.hpp
 )

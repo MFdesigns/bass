@@ -15,6 +15,7 @@
  */
 
 #pragma once
+#include "instruction.hpp"
 #include "token.hpp"
 #include <cstdint>
 #include <string>
@@ -45,15 +46,6 @@ enum class RegisterLayout {
     REG_M_REG_T_I8 = 0x11,
     REG_P_REG_T_I16 = 0x12,
     REG_M_REG_T_I16 = 0x13,
-};
-
-enum class UVMType {
-    I8,
-    I16,
-    I32,
-    I64,
-    F32,
-    F64,
 };
 
 class ASTNode {
@@ -102,6 +94,7 @@ class Instruction : public ASTNode {
                 std::string name);
     std::string Name;
     std::vector<ASTNode*> Params;
+    InstrParamList* ParamList = nullptr;
 };
 
 class FloatNumber : public ASTNode {
@@ -139,6 +132,6 @@ class RegisterOffset : public ASTNode {
 
 class TypeInfo : public ASTNode {
   public:
-    TypeInfo(uint32_t pos, uint32_t lineNr, uint32_t lineCol, UVMType dataType);
-    UVMType DataType;
+    TypeInfo(uint32_t pos, uint32_t lineNr, uint32_t lineCol, uint8_t dataType);
+    uint8_t DataType;
 };

@@ -15,29 +15,30 @@
  */
 
 #include "parser.hpp"
+#include "instruction.hpp"
 #include <iomanip>
 #include <iostream>
 
 Parser::Parser(Source* src, std::vector<Token>* tokens, Global* global)
     : Src(src), Tokens(tokens), Glob(global){};
 
-UVMType Parser::getUVMType(Token* tok) {
+uint8_t Parser::getUVMType(Token* tok) {
     std::string typeName;
     Src->getSubStr(tok->Index, tok->Size, typeName);
 
-    UVMType type = UVMType::I8;
+    uint8_t type = 0;
     if (typeName == "i8") {
-        type = UVMType::I8;
+        type = UVM_TYPE_I8;
     } else if (typeName == "i16") {
-        type = UVMType::I16;
+        type = UVM_TYPE_I8;
     } else if (typeName == "i32") {
-        type = UVMType::I32;
+        type = UVM_TYPE_I32;
     } else if (typeName == "i64") {
-        type = UVMType::I64;
+        type = UVM_TYPE_I64;
     } else if (typeName == "f32") {
-        type = UVMType::F32;
+        type = UVM_TYPE_F32;
     } else if (typeName == "f64") {
-        type = UVMType::F64;
+        type = UVM_TYPE_F64;
     }
     return type;
 }
@@ -315,7 +316,7 @@ bool Parser::buildAST() {
         } break;
         case ParseState::INSTR_BODY: {
             if (t->Type == TokenType::TYPE_INFO) {
-                UVMType typeUVMType = getUVMType(t);
+                uint8_t typeUVMType = getUVMType(t);
                 TypeInfo* typeInfo =
                     new TypeInfo(t->Index, t->LineRow, t->LineCol, typeUVMType);
                 instr->Params.push_back(typeInfo);
@@ -380,4 +381,157 @@ bool Parser::buildAST() {
         }
     }
     return true;
+}
+
+bool Parser::typeCheckInstrParams(Instruction* instr) {
+    // TODO: Move this to the scanner phase
+    Instructions instrID = Instructions::NOP;
+    bool foundInstr = false;
+    uint32_t instrNameDefIndex = 0;
+    while (!foundInstr && instrNameDefIndex < InstrNames.size()) {
+        const InstrNameDef* nameDef = &InstrNames[instrNameDefIndex];
+        if (instr->Name == nameDef->Str) {
+            instrID = nameDef->Instr;
+            foundInstr = true;
+        }
+        instrNameDefIndex++;
+    }
+    const std::vector<InstrParamList>* paramLists = &INSTR_ASM_DEFS.at(instrID);
+
+    // Try to find instruction paramter signature
+    const InstrParamList* paramList = nullptr;
+    bool foundSign = false;
+    uint32_t paramListIndex = 0;
+    while (!foundSign && paramListIndex < paramLists->size()) {
+        paramList = &(*paramLists)[paramListIndex];
+        if (paramList->Params.size() == instr->Params.size()) {
+            bool validList = true;
+            uint32_t listIndex = 0;
+            while (validList && listIndex < paramList->Params.size()) {
+                ASTNode* node = instr->Params[listIndex];
+                switch (paramList->Params[listIndex]) {
+                case InstrParamType::INT_TYPE: {
+                    // TODO: Move this into the build AST phase
+                    if (node->Type != ASTType::TYPE_INFO) {
+                        validList = false;
+                        break;
+                    }
+
+                    TypeInfo* info = dynamic_cast<TypeInfo*>(node);
+                    if (info->DataType != UVM_TYPE_I8 &&
+                        info->DataType != UVM_TYPE_I16 &&
+                        info->DataType != UVM_TYPE_I32 &&
+                        info->DataType != UVM_TYPE_I64) {
+                        validList = false;
+                    }
+                } break;
+                case InstrParamType::FLOAT_TYPE: {
+                    // TODO: Move this into the build AST phase
+                    if (node->Type != ASTType::TYPE_INFO) {
+                        validList = false;
+                        break;
+                    }
+
+                    TypeInfo* info = dynamic_cast<TypeInfo*>(node);
+                    if (info->DataType != UVM_TYPE_F32 &&
+                        info->DataType != UVM_TYPE_F64) {
+                        validList = false;
+                    }
+                } break;
+                case InstrParamType::FUNC_ID: {
+                    if (node->Type != ASTType::IDENTIFIER) {
+                        validList = false;
+                    }
+                } break;
+                case InstrParamType::LABEL_ID: {
+                    if (node->Type != ASTType::IDENTIFIER) {
+                        validList = false;
+                    }
+                } break;
+                case InstrParamType::INT_REG: {
+                    if (node->Type != ASTType::REGISTER_ID) {
+                        validList = false;
+                        break;
+                    }
+
+                    RegisterId* regId = dynamic_cast<RegisterId*>(node);
+                    // TODO: What about flag register ?
+                    if (regId->Id < 0x1 && regId->Id > 0x15) {
+                        validList = false;
+                    }
+                } break;
+                case InstrParamType::FLOAT_REG: {
+                    if (node->Type != ASTType::REGISTER_ID) {
+                        validList = false;
+                        break;
+                    }
+
+                    RegisterId* regId = dynamic_cast<RegisterId*>(node);
+                    if (regId->Id < 0x16 && regId->Id > 0x26) {
+                        validList = false;
+                    }
+                } break;
+                case InstrParamType::REG_OFFSET: {
+                    if (node->Type != ASTType::REGISTER_OFFSET) {
+                        validList = false;
+                    }
+                } break;
+                case InstrParamType::INT_NUM: {
+                    if (node->Type != ASTType::INTEGER_NUMBER) {
+                        validList = false;
+                    }
+                } break;
+                case InstrParamType::FLOAT_NUM: {
+                    if (node->Type != ASTType::FLOAT_NUMBER) {
+                        validList = false;
+                    }
+                } break;
+                case InstrParamType::SYS_INT: {
+                    // TODO: Check for valid sys int
+                    if (node->Type != ASTType::INTEGER_NUMBER) {
+                        validList = false;
+                    }
+                } break;
+                }
+                listIndex++;
+            }
+            foundSign = validList;
+        }
+        paramListIndex++;
+    }
+
+    if (!foundSign) {
+        std::cout << "Error no matching parameter list found for instruction "
+                  << instr->Name << " at Ln " << instr->LineNumber << " Col "
+                  << instr->LineColumn << '\n';
+        return false;
+    }
+
+    // TODO: Range check int and float number for given uvm type
+    instr->ParamList =
+        (InstrParamList*)paramList; // Attach encoding info to instruction
+
+    return true;
+}
+
+bool Parser::typeCheck() {
+    // Check all instruction parameters
+    bool valid = true;
+    for (auto& globElem : Glob->Body) {
+        FuncDef* func = dynamic_cast<FuncDef*>(globElem);
+        for (auto& funcElem : func->Body) {
+            if (funcElem->Type == ASTType::INSTRUCTION) {
+                Instruction* instr = dynamic_cast<Instruction*>(funcElem);
+                valid = typeCheckInstrParams(instr);
+            } else if (funcElem->Type == ASTType::LABEL_DEFINITION) {
+                // Add refrence
+            }
+        }
+    }
+
+    // TODO: Check if all label and function references are resolved and there
+    // are no duplicate definition. Important: label defs are func scope and func
+    // defs are global scope
+
+    return valid;
 }

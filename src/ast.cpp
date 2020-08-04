@@ -77,5 +77,5 @@ RegisterOffset::RegisterOffset(uint32_t pos,
 TypeInfo::TypeInfo(uint32_t pos,
                    uint32_t lineNr,
                    uint32_t lineCol,
-                   UVMType dataType)
+                   uint8_t dataType)
     : ASTNode(ASTType::TYPE_INFO, pos, lineNr, lineCol), DataType(dataType) {}
