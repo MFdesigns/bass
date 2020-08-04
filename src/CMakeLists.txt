@@ -1,4 +1,4 @@
-add_executable(uvm-assembler
+add_executable(bass
     main.cpp
     assembler.cpp assembler.hpp
     token.cpp token.hpp
