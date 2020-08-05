@@ -225,7 +225,7 @@ struct InstrNameDef {
     Instructions Instr;
 };
 
-const static std::array<InstrNameDef, 12> INSTR_NAMES = {
+const static std::array<InstrNameDef, 13> INSTR_NAMES = {
     InstrNameDef{"nop", Instructions::NOP},
     InstrNameDef{"push", Instructions::PUSH},
     InstrNameDef{"pop", Instructions::POP},
@@ -238,6 +238,7 @@ const static std::array<InstrNameDef, 12> INSTR_NAMES = {
     InstrNameDef{"ret", Instructions::RET},
     InstrNameDef{"sys", Instructions::SYS},
     InstrNameDef{"add", Instructions::ADD},
+    InstrNameDef{"jmp", Instructions::JMP},
 };
 
 struct TypeVariant {
@@ -362,4 +363,6 @@ const static std::map<Instructions, std::vector<InstrParamList>> INSTR_ASM_DEFS{
                          InstrParamType::INT_REG},
                         {}},
      }},
+    {Instructions::JMP,
+     {InstrParamList{OP_JMP_VADDR, 0, {InstrParamType::LABEL_ID}, {}}}},
 };
