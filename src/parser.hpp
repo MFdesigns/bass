@@ -32,6 +32,8 @@ class Parser {
   private:
     uint64_t Cursor = 0;
     std::vector<Token>* Tokens;
+    std::vector<FuncDef*> FuncDefs;
+    std::vector<Identifier*> FuncRefs;
     Global* Glob;
     Source* Src;
     uint8_t getUVMType(Token* tok);
@@ -41,5 +43,6 @@ class Parser {
     bool peekToken(Token** tok);
     bool parseRegOffset(Instruction* instr);
     void throwError(const char* msg, Token& tok);
-    bool typeCheckInstrParams(Instruction* instr);
+    bool typeCheckInstrParams(Instruction* instr,
+                              std::vector<Identifier*>& labelRefs);
 };

@@ -291,7 +291,8 @@ bool Parser::buildAST() {
             } break;
             case TokenType::LABEL_DEF: {
                 std::string labelName;
-                Src->getSubStr(t->Index, t->Size, labelName);
+                // + 1 because @ sign at start of label should be ignored
+                Src->getSubStr(t->Index + 1, t->Size - 1, labelName);
                 LabelDef* label =
                     new LabelDef(t->Index, t->LineRow, t->LineCol, labelName);
                 func->Body.push_back(label);
@@ -383,13 +384,14 @@ bool Parser::buildAST() {
     return true;
 }
 
-bool Parser::typeCheckInstrParams(Instruction* instr) {
+bool Parser::typeCheckInstrParams(Instruction* instr,
+                                  std::vector<Identifier*>& labelRefs) {
     // TODO: Move this to the scanner phase
     Instructions instrID = Instructions::NOP;
     bool foundInstr = false;
     uint32_t instrNameDefIndex = 0;
-    while (!foundInstr && instrNameDefIndex < InstrNames.size()) {
-        const InstrNameDef* nameDef = &InstrNames[instrNameDefIndex];
+    while (!foundInstr && instrNameDefIndex < INSTR_NAMES.size()) {
+        const InstrNameDef* nameDef = &INSTR_NAMES[instrNameDefIndex];
         if (instr->Name == nameDef->Str) {
             instrID = nameDef->Instr;
             foundInstr = true;
@@ -441,12 +443,17 @@ bool Parser::typeCheckInstrParams(Instruction* instr) {
                 case InstrParamType::FUNC_ID: {
                     if (node->Type != ASTType::IDENTIFIER) {
                         validList = false;
+                        break;
                     }
+                    Identifier* funcId = dynamic_cast<Identifier*>(node);
+                    FuncRefs.push_back(funcId);
                 } break;
                 case InstrParamType::LABEL_ID: {
                     if (node->Type != ASTType::IDENTIFIER) {
                         validList = false;
                     }
+                    Identifier* labelId = dynamic_cast<Identifier*>(node);
+                    labelRefs.push_back(labelId);
                 } break;
                 case InstrParamType::INT_REG: {
                     if (node->Type != ASTType::REGISTER_ID) {
@@ -501,6 +508,8 @@ bool Parser::typeCheckInstrParams(Instruction* instr) {
     }
 
     if (!foundSign) {
+        // TODO: If function name is not resolved to Instructions enum them
+        // assembler will just assume its a NOP
         std::cout << "Error no matching parameter list found for instruction "
                   << instr->Name << " at Ln " << instr->LineNumber << " Col "
                   << instr->LineColumn << '\n';
@@ -515,23 +524,64 @@ bool Parser::typeCheckInstrParams(Instruction* instr) {
 }
 
 bool Parser::typeCheck() {
+    // TODO: Duplicate entries
+    std::vector<LabelDef*> scopeLabelDefs;
+    std::vector<Identifier*> scopeLabelRefs;
     // Check all instruction parameters
     bool valid = true;
     for (auto& globElem : Glob->Body) {
+        scopeLabelDefs.clear(); // Empty label defs from previous scope
+        scopeLabelRefs.clear();
         FuncDef* func = dynamic_cast<FuncDef*>(globElem);
+        FuncDefs.push_back(func);
         for (auto& funcElem : func->Body) {
             if (funcElem->Type == ASTType::INSTRUCTION) {
                 Instruction* instr = dynamic_cast<Instruction*>(funcElem);
-                valid = typeCheckInstrParams(instr);
+                valid = typeCheckInstrParams(instr, scopeLabelRefs);
             } else if (funcElem->Type == ASTType::LABEL_DEFINITION) {
-                // Add refrence
+                LabelDef* labelDef = dynamic_cast<LabelDef*>(funcElem);
+                scopeLabelDefs.push_back(labelDef);
+            }
+        }
+
+        // Check if all label references in the current function scope are
+        // resolved
+        for (auto& ref : scopeLabelRefs) {
+            bool found = false;
+            auto i = 0;
+            while (!found && i < scopeLabelDefs.size()) {
+                if (ref->Name == scopeLabelDefs[i]->Name) {
+                    found = true;
+                }
+                i++;
+            }
+            if (!found) {
+                std::cout
+                    << "Error unresolved label identifier referenced at Ln "
+                    << ref->LineNumber << " Col " << ref->LineColumn << '\n';
+                valid = false;
             }
         }
     }
 
-    // TODO: Check if all label and function references are resolved and there
-    // are no duplicate definition. Important: label defs are func scope and func
-    // defs are global scope
+    // TODO: Check for duplicate entries
+    // Check if all function references are resolved
+    for (auto& ref : FuncRefs) {
+        bool found = false;
+        auto i = 0;
+        while (!found && i < FuncDefs.size()) {
+            if (ref->Name == FuncDefs[i]->Name) {
+                found = true;
+            }
+            i++;
+        }
+        if (!found) {
+            std::cout
+                << "Error unresolved function identifier referenced at Ln "
+                << ref->LineNumber << " Col " << ref->LineColumn << '\n';
+            valid = false;
+        }
+    }
 
     return valid;
 }
