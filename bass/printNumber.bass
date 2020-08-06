@@ -5,7 +5,7 @@ printNumber {
     add i64 2, sp // Allocate locals on stack
 
     store i8 r0, [bp]       // store paramter as local char
-    store i8 0x0A, [bp + 1] // newline char
+    copy i8 0x0A, [bp + 1]  // newline char
 
     // Convert i8 to unicode
     load i8 [bp], r0
