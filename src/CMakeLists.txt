@@ -6,4 +6,6 @@ add_executable(bass
     ast.cpp ast.hpp
     parser.cpp parser.hpp
     instruction.hpp
+    generator.cpp generator.hpp
+    fileBuffer.cpp fileBuffer.hpp
 )
