@@ -53,7 +53,7 @@ void FileBuffer::increase(uint32_t size) {
 }
 
 // ONLY WORKS WITH DATA WHICH IS <= 1024 BYTES
-void FileBuffer::writeMemory(uint64_t index, uint32_t size, uint8_t* data) {
+void FileBuffer::write(uint64_t index, uint8_t* data, uint32_t size) {
     // Find buffer with start index
     BufferRange* range = nullptr;
     bool foundBuff = false;
@@ -102,9 +102,15 @@ void FileBuffer::push(uint8_t data) {
         }
         i++;
     }
-
     range->Buffer[Cursor] = data;
     increase(1);
+}
+
+void FileBuffer::writeToStream(std::ofstream& stream) {
+    // TODO: Only write out used memory instead of all the complete buffers
+    for (auto& range : Buffers) {
+        stream.write((const char*)range.Buffer, FileBuffer::BUFFER_SIZE);
+    }
 }
 
 void FileBuffer::allocBuffer() {
