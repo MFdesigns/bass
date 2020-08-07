@@ -19,6 +19,7 @@
 #include "scanner.hpp"
 #include "token.hpp"
 #include <cstdint>
+#include <filesystem>
 #include <iostream>
 #include <vector>
 
@@ -32,4 +33,5 @@ class Assembler {
     Source* Src = nullptr;
     Scanner* Scan = nullptr;
     std::vector<Token> Tokens;
+    std::filesystem::path File;
 };

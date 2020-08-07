@@ -15,8 +15,8 @@
  */
 
 #include "assembler.hpp"
+#include "generator.hpp"
 #include "parser.hpp"
-#include <filesystem>
 #include <fstream>
 #include <iostream>
 
@@ -29,6 +29,7 @@ bool Assembler::readSource(char* pathName) {
                   << "' does not exist\n";
         return false;
     }
+    File = p;
 
     uint32_t size = 0;
     // TODO: Add error checking
@@ -67,6 +68,9 @@ bool Assembler::assemble() {
     if (!typeValid) {
         return false;
     }
+
+    Generator gen{&glob, &File};
+    gen.genBinary();
 
     return true;
 }
