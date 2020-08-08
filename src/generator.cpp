@@ -15,6 +15,7 @@
  */
 
 #include "generator.hpp"
+#include <cstring>
 #include <fstream>
 
 SecNameString::SecNameString(std::string str, vAddr addr)
