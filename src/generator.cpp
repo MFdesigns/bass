@@ -140,7 +140,7 @@ void Generator::emitInstruction(Instruction* instr) {
             IntegerNumber* num = dynamic_cast<IntegerNumber*>(param);
             if (type == UVM_TYPE_I8) {
                 uint8_t typedNum = (uint8_t)num->Num;
-                temp[instrSize] == typedNum;
+                temp[instrSize] = typedNum;
                 instrSize++;
             } else if (type == UVM_TYPE_I16) {
                 uint16_t typedNum = (uint16_t)num->Num;

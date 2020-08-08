@@ -35,21 +35,14 @@ enum class ASTType {
 };
 
 enum class RegisterLayout {
-    REG = 0x1,
-    REG_P_I8 = 0x2,
-    REG_M_I8 = 0x3,
-    REG_P_I16 = 0x4,
-    REG_M_I16 = 0x5,
-    REG_P_I32 = 0x6,
-    REG_M_I32 = 0x7,
-    REG_P_REG_T_I8 = 0x10,
-    REG_M_REG_T_I8 = 0x11,
-    REG_P_REG_T_I16 = 0x12,
-    REG_M_REG_T_I16 = 0x13,
+    IR,
+    IR_INT,
+    IR_IR_INT,
 };
 
 class ASTNode {
   public:
+    ASTNode(ASTType type);
     ASTNode(ASTType type, uint32_t pos, uint32_t lineNr, uint32_t lineCol);
     ASTType Type;
     uint32_t Position;
@@ -101,12 +94,15 @@ class FloatNumber : public ASTNode {
   public:
     FloatNumber(uint32_t pos, uint32_t lineNr, uint32_t lineCol, double num);
     double Num;
+    uint8_t DataType;
 };
 
 class IntegerNumber : public ASTNode {
   public:
+    IntegerNumber();
     IntegerNumber(uint32_t pos, uint32_t lineNr, uint32_t lineCol, int64_t num);
     int64_t Num;
+    uint8_t DataType;
 };
 
 class RegisterId : public ASTNode {
@@ -117,6 +113,7 @@ class RegisterId : public ASTNode {
 
 class RegisterOffset : public ASTNode {
   public:
+    RegisterOffset();
     RegisterOffset(uint32_t pos,
                    uint32_t lineNr,
                    uint32_t lineCol,
@@ -125,9 +122,10 @@ class RegisterOffset : public ASTNode {
                    RegisterId* offset,
                    IntegerNumber* immediate);
     RegisterLayout Layout;
-    RegisterId* Base;
-    RegisterId* Offset;
-    IntegerNumber* Immediate;
+    RegisterId* Base = nullptr;
+    RegisterId* Offset = nullptr;
+    IntegerNumber* Immediate = nullptr;
+    bool Signed = false;
 };
 
 class TypeInfo : public ASTNode {

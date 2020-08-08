@@ -16,6 +16,8 @@
 
 #include "ast.hpp"
 
+ASTNode::ASTNode(ASTType type) : Type(type) {}
+
 ASTNode::ASTNode(ASTType type, uint32_t pos, uint32_t lineNr, uint32_t lineCol)
     : Type(type), Position(pos), LineNumber(lineNr), LineColumn(lineCol) {}
 
@@ -52,6 +54,8 @@ FloatNumber::FloatNumber(uint32_t pos,
                          double num)
     : ASTNode(ASTType::FLOAT_NUMBER, pos, lineNr, lineCol), Num(num) {}
 
+IntegerNumber::IntegerNumber() : ASTNode(ASTType::INTEGER_NUMBER) {}
+
 IntegerNumber::IntegerNumber(uint32_t pos,
                              uint32_t lineNr,
                              uint32_t lineCol,
@@ -63,6 +67,8 @@ RegisterId::RegisterId(uint32_t pos,
                        uint32_t lineCol,
                        uint8_t id)
     : ASTNode(ASTType::REGISTER_ID, pos, lineNr, lineCol), Id(id) {}
+
+RegisterOffset::RegisterOffset() : ASTNode(ASTType::REGISTER_OFFSET){};
 
 RegisterOffset::RegisterOffset(uint32_t pos,
                                uint32_t lineNr,

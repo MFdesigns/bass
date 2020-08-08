@@ -116,17 +116,14 @@ void Parser::throwError(const char* msg, Token& tok) {
 }
 
 bool Parser::parseRegOffset(Instruction* instr) {
-    RegisterId* base = nullptr;
-    RegisterId* offset = nullptr;
-    IntegerNumber* intNum = nullptr;
-    bool positive = false;
-
+    RegisterOffset* regOff = new RegisterOffset();
     Token* t = eatToken();
+
     if (t->Type == TokenType::REGISTER_DEFINITION) {
         std::string regName;
         Src->getSubStr(t->Index, t->Size, regName);
         uint8_t regId = getRegisterTypeFromName(regName);
-        base = new RegisterId(t->Index, t->LineRow, t->LineCol, regId);
+        regOff->Base = new RegisterId(t->Index, t->LineRow, t->LineCol, regId);
         t = eatToken();
     } else {
         throwError("Expected register in register offset", *t);
@@ -134,73 +131,103 @@ bool Parser::parseRegOffset(Instruction* instr) {
     }
 
     if (t->Type == TokenType::RIGHT_SQUARE_BRACKET) {
-        RegisterOffset* regOff =
-            new RegisterOffset(t->Index, t->LineRow, t->LineCol,
-                               RegisterLayout::REG, base, offset, intNum);
+        regOff->Position = t->Index;
+        regOff->LineNumber = t->LineRow;
+        regOff->LineColumn = t->LineCol;
+        regOff->Layout = RegisterLayout::IR;
         instr->Params.push_back(regOff);
         return true;
     } else if (t->Type == TokenType::PLUS_SIGN) {
-        positive = true;
+        regOff->Signed = false;
     } else if (t->Type == TokenType::MINUS_SIGN) {
-        positive = false;
+        regOff->Signed = true;
     } else {
         throwError("Unexpected token in register offset", *t);
         return false;
     }
-    t = eatToken();
 
+    t = eatToken();
     if (t->Type == TokenType::INTEGER_NUMBER) {
         Token* peek;
         bool eof = !peekToken(&peek);
         if (!eof && peek->Type == TokenType::RIGHT_SQUARE_BRACKET) {
+            // Get int string and convert to an int
             std::string numStr;
             Src->getSubStr(t->Index, t->Size, numStr);
             int64_t num = strToInt(numStr);
-            intNum = new IntegerNumber(t->Index, t->LineRow, t->LineCol, num);
-            RegisterLayout layout = RegisterLayout::REG;
-            // TODO: support different int sizes
-            if (positive) {
-                layout = RegisterLayout::REG_P_I32;
+
+            IntegerNumber* intNum = new IntegerNumber();
+            intNum->Position = t->Index;
+            intNum->LineNumber = t->LineRow;
+            intNum->LineColumn = t->LineCol;
+            intNum->Num = num;
+
+            // Figure at the smallest data type which the number fits into
+            if (num <= UINT8_MAX) {
+                intNum->DataType = UVM_TYPE_I8;
+            } else if (num <= UINT16_MAX) {
+                intNum->DataType = UVM_TYPE_I16;
+            } else if (num <= UINT32_MAX) {
+                intNum->DataType = UVM_TYPE_I32;
             } else {
-                layout = RegisterLayout::REG_M_I32;
+                throwError(
+                    "Register offset immedate does not fit into 32-bit value",
+                    *t);
+                return false;
             }
-            RegisterOffset* regOff = new RegisterOffset(
-                t->Index, t->LineRow, t->LineCol, layout, base, offset, intNum);
+
+            // TODO: Register offset position is not correct
+            regOff->Position = t->Index;
+            regOff->LineNumber = t->LineRow;
+            regOff->LineColumn = t->LineCol;
+            regOff->Layout = RegisterLayout::IR_INT;
+            regOff->Immediate = intNum;
             instr->Params.push_back(regOff);
             t = eatToken();
         } else {
-            throwError("Expected closing bracket ]", *t);
+            throwError("Expected closing bracket after immedate offset inside "
+                       "register offset ]",
+                       *t);
             return false;
         }
     } else if (t->Type == TokenType::REGISTER_DEFINITION) {
         std::string regName;
         Src->getSubStr(t->Index, t->Size, regName);
-        uint8_t regId = getRegisterTypeFromName(regName);
-        offset = new RegisterId(t->Index, t->LineRow, t->LineCol, regId);
+        uint8_t regIdType = getRegisterTypeFromName(regName);
+        regOff->Offset =
+            new RegisterId(t->Index, t->LineRow, t->LineCol, regIdType);
         t = eatToken();
         if (t->Type == TokenType::ASTERISK) {
             t = eatToken();
         } else {
-            throwError("Expected * after offset", *t);
+            throwError("Expected * after offset inside register offset", *t);
             return false;
         }
 
         std::string numStr;
         Src->getSubStr(t->Index, t->Size, numStr);
         int64_t num = strToInt(numStr);
-        intNum = new IntegerNumber(t->Index, t->LineRow, t->LineCol, num);
+        regOff->Immediate =
+            new IntegerNumber(t->Index, t->LineRow, t->LineCol, num);
         t = eatToken();
 
-        RegisterLayout layout = RegisterLayout::REG;
         if (t->Type == TokenType::RIGHT_SQUARE_BRACKET) {
-            // TODO: support different int sizes
-            if (positive) {
-                layout = RegisterLayout::REG_P_REG_T_I16;
+            if (num <= UINT8_MAX) {
+                regOff->Immediate->DataType = UVM_TYPE_I8;
+            } else if (num <= UINT16_MAX) {
+                regOff->Immediate->DataType = UVM_TYPE_I16;
             } else {
-                layout = RegisterLayout::REG_M_REG_T_I16;
+                throwError(
+                    "Register offset immedate does not fit into 16-bit value",
+                    *t);
+                return false;
             }
-            RegisterOffset* regOff = new RegisterOffset(
-                t->Index, t->LineRow, t->LineCol, layout, base, offset, intNum);
+
+            // TODO: Register offset position is not correct
+            regOff->Position = t->Index;
+            regOff->LineNumber = t->LineRow;
+            regOff->LineColumn = t->LineCol;
+            regOff->Layout = RegisterLayout::IR_IR_INT;
             instr->Params.push_back(regOff);
         } else {
             throwError("Expectd closing bracket after factor", *t);
