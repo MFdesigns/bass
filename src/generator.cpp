@@ -88,6 +88,59 @@ void Generator::writeFile() {
     stream.close();
 }
 
+void Generator::emitRegisterOffset(RegisterOffset* regOff, uint8_t* out) {
+    uint8_t layout = 0;
+
+    // Encode base register
+    layout |= RO_ENC_BASE_IR;
+    out[1] = regOff->Base->Id;
+
+    if (regOff->Layout == RegisterLayout::IR_INT) {
+        if (regOff->Signed) {
+            layout |= RO_ENC_SIGNED;
+        }
+
+        switch (regOff->Immediate->DataType) {
+        case UVM_TYPE_I8: {
+            uint8_t typedNum = (uint8_t)regOff->Immediate->Num;
+            out[2] = typedNum;
+            layout |= RO_ENC_OFFSET_I8;
+        } break;
+        case UVM_TYPE_I16: {
+            uint16_t typedNum = (uint16_t)regOff->Immediate->Num;
+            std::memcpy(&out[2], &typedNum, 2);
+            layout |= RO_ENC_OFFSET_I16;
+        } break;
+        case UVM_TYPE_I32: {
+            uint16_t typedNum = (uint16_t)regOff->Immediate->Num;
+            std::memcpy(&out[2], &typedNum, 4);
+            layout |= RO_ENC_OFFSET_I32;
+        } break;
+        }
+    } else if (regOff->Layout == RegisterLayout::IR_IR_INT) {
+        if (regOff->Signed) {
+            layout |= RO_ENC_SIGNED;
+        }
+        layout |= RO_ENC_OFFSET_IR;
+        out[2] = regOff->Offset->Id;
+
+        switch (regOff->Immediate->DataType) {
+        case UVM_TYPE_I8: {
+            uint8_t typedNum = (uint8_t)regOff->Immediate->Num;
+            out[3] = typedNum;
+            layout |= RO_ENC_FACTOR_I8;
+        } break;
+        case UVM_TYPE_I16: {
+            uint16_t typedNum = (uint16_t)regOff->Immediate->Num;
+            std::memcpy(&out[3], &typedNum, 2);
+            layout |= RO_ENC_FACTOR_I16;
+        } break;
+        }
+    }
+
+    out[0] = layout;
+}
+
 void Generator::emitInstruction(Instruction* instr) {
     constexpr uint32_t MAX_INSTR_SIZE = 15;
     // Temporary instruction mem
@@ -161,6 +214,8 @@ void Generator::emitInstruction(Instruction* instr) {
             instrSize++;
         } break;
         case ASTType::REGISTER_OFFSET: {
+            RegisterOffset* regOff = dynamic_cast<RegisterOffset*>(param);
+            emitRegisterOffset(regOff, &temp[instrSize]);
             instrSize += 6;
         } break;
         case ASTType::TYPE_INFO: {
