@@ -13,7 +13,7 @@ printNumber {
     store i8 r0, [bp]
 
     // Console print char and newline
-    load i64 bp, r0
+    copy i64 bp, r0
     load i32 2, r1
     sys 0x1
 
