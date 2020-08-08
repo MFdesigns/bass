@@ -4,7 +4,7 @@ main {
     copy i64 0x6F57206F6C6C6548, [bp]
     copy i64 0x0A21646C72, [bp + 8]
 
-    load i64 bp, r0
+    copy i64 bp, r0
     load i32 13, r1
     sys 0x1
 
