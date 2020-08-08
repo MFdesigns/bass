@@ -213,7 +213,7 @@ bool Scanner::scanWord(uint32_t& outSize) {
             terminated = !Src->getChar(Cursor + 1, peek);
             if (!terminated &&
                 (peek == '\t' || peek == ' ' || peek == '{' || peek == '\n' ||
-                 peek == ',' || peek == ']' || peek == '+' || peek == '-')) {
+                 peek == ',' || peek == ']' || peek == '+' || peek == '-' || peek == '*')) {
                 terminated = true;
             } else if (!terminated) {
                 eatChar(c);
