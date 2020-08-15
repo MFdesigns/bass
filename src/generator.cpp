@@ -15,6 +15,7 @@
  */
 
 #include "generator.hpp"
+#include <array>
 #include <cstring>
 #include <fstream>
 

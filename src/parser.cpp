@@ -15,7 +15,8 @@
  */
 
 #include "parser.hpp"
-#include "instruction.hpp"
+#include "asm/asm.hpp"
+#include "asm/encoding.hpp"
 #include <iomanip>
 #include <iostream>
 
@@ -414,7 +415,7 @@ bool Parser::buildAST() {
 bool Parser::typeCheckInstrParams(Instruction* instr,
                                   std::vector<Identifier*>& labelRefs) {
     // TODO: Move this to the scanner phase
-    Instructions instrID = Instructions::NOP;
+    uint8_t instrID = 0;
     bool foundInstr = false;
     uint32_t instrNameDefIndex = 0;
     while (!foundInstr && instrNameDefIndex < INSTR_NAMES.size()) {

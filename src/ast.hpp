@@ -15,7 +15,7 @@
  */
 
 #pragma once
-#include "instruction.hpp"
+#include "asm/asm.hpp"
 #include "token.hpp"
 #include <cstdint>
 #include <string>

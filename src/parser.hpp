@@ -16,7 +16,7 @@
 
 #pragma once
 #include "ast.hpp"
-#include "instruction.hpp"
+#include "asm/asm.hpp"
 #include "scanner.hpp"
 #include "token.hpp"
 #include <vector>
