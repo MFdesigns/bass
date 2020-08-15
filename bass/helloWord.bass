@@ -1,12 +1,13 @@
 main {
-    copy i64 sp, bp
+    copy i64 sp, bp     // Setup base pointer
 
-    copy i64 0x6F57206F6C6C6548, [bp]
-    copy i64 0x0A21646C72, [bp + 8]
+    // String to print out in little endiannes
+    copy i64 0x6F57206F6C6C6548, [bp]   // "Hello Wo"
+    copy i64 0x0A21646C72, [bp + 8]     // "rld\n"
 
-    copy i64 bp, r0
-    load i32 13, r1
-    sys 0x1
+    copy i64 bp, r0     // Set pointer to string
+    load i32 13, r1     // Set string length
+    sys 0x1             // System call to console print
 
-    exit
+    exit                // Exit programm
 }
