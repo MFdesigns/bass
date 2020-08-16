@@ -565,7 +565,10 @@ bool Parser::typeCheck() {
         for (auto& funcElem : func->Body) {
             if (funcElem->Type == ASTType::INSTRUCTION) {
                 Instruction* instr = dynamic_cast<Instruction*>(funcElem);
-                valid = typeCheckInstrParams(instr, scopeLabelRefs);
+                bool validParams = typeCheckInstrParams(instr, scopeLabelRefs);
+                if (!validParams) {
+                    valid = false;
+                }
             } else if (funcElem->Type == ASTType::LABEL_DEFINITION) {
                 LabelDef* labelDef = dynamic_cast<LabelDef*>(funcElem);
                 scopeLabelDefs.push_back(labelDef);
