@@ -15,6 +15,7 @@
  */
 
 #include "scanner.hpp"
+#include "asm/encoding.hpp"
 #include <iomanip>
 #include <iostream>
 
@@ -141,19 +142,19 @@ void Scanner::addToken(TokenType type,
                        uint32_t index,
                        uint32_t lineRow,
                        uint32_t lineColumn,
-                       uint32_t size) {
-    Tokens->emplace_back(type, index, size, lineRow, lineColumn);
+                       uint32_t size,
+                       uint8_t id) {
+    Tokens->emplace_back(type, index, size, lineRow, lineColumn, id);
 }
 
-bool Scanner::isInstruction(std::string& token) {
-    bool isInstr = false;
-    for (const auto& instr : INSTRUCTIONS) {
-        if (token == instr) {
-            isInstr = true;
-            break;
+bool Scanner::isInstruction(std::string& token, uint8_t& id) {
+    for (const auto& instr : INSTR_NAMES) {
+        if (token == instr.Str) {
+            id = instr.Id;
+            return true;
         }
     }
-    return isInstr;
+    return false;
 }
 
 bool Scanner::isTypeInfo(std::string& token) {
@@ -263,20 +264,21 @@ bool Scanner::scanSource() {
             Src->getSubStr(tokPos, tokSize, token);
 
             // Check if token is instruction
-            if (isInstruction(token)) {
+            uint8_t id = 0;
+            if (isInstruction(token, id)) {
                 addToken(TokenType::INSTRUCTION, tokPos, tokLineRow,
-                         tokLineColumn, token.size());
+                         tokLineColumn, token.size(), id);
             } else if (isTypeInfo(token)) {
                 addToken(TokenType::TYPE_INFO, tokPos, tokLineRow,
-                         tokLineColumn, token.size());
+                         tokLineColumn, token.size(), 0);
             } else if (isRegister(token)) {
                 addToken(TokenType::REGISTER_DEFINITION, tokPos, tokLineRow,
-                         tokLineColumn, token.size());
+                         tokLineColumn, token.size(), 0);
             } else {
                 // If the token is not an instruciton, type info or register
                 // then it must be an identifier
                 addToken(TokenType::IDENTIFIER, tokPos, tokLineRow,
-                         tokLineColumn, token.size());
+                         tokLineColumn, token.size(), 0);
             }
             eof = eatChar(c);
 
@@ -352,7 +354,8 @@ bool Scanner::scanSource() {
             }
 
             if (validNumber) {
-                addToken(type, tokPos, tokLineRow, tokLineColumn, token.size());
+                addToken(type, tokPos, tokLineRow, tokLineColumn, token.size(),
+                         0);
             }
             eof = eatChar(c);
 
@@ -375,35 +378,35 @@ bool Scanner::scanSource() {
             } break;
             case '+':
                 addToken(TokenType::PLUS_SIGN, Cursor, CursorLineRow,
-                         CursorLineColumn, 1);
+                         CursorLineColumn, 1, 0);
                 break;
             case '-':
                 addToken(TokenType::MINUS_SIGN, Cursor, CursorLineRow,
-                         CursorLineColumn, 1);
+                         CursorLineColumn, 1, 0);
                 break;
             case '*':
                 addToken(TokenType::ASTERISK, Cursor, CursorLineRow,
-                         CursorLineColumn, 1);
+                         CursorLineColumn, 1, 0);
                 break;
             case ',':
                 addToken(TokenType::COMMA, Cursor, CursorLineRow,
-                         CursorLineColumn, 1);
+                         CursorLineColumn, 1, 0);
                 break;
             case '[':
                 addToken(TokenType::LEFT_SQUARE_BRACKET, Cursor, CursorLineRow,
-                         CursorLineColumn, 1);
+                         CursorLineColumn, 1, 0);
                 break;
             case ']':
                 addToken(TokenType::RIGHT_SQUARE_BRACKET, Cursor, CursorLineRow,
-                         CursorLineColumn, 1);
+                         CursorLineColumn, 1, 0);
                 break;
             case '{':
                 addToken(TokenType::LEFT_CURLY_BRACKET, Cursor, CursorLineRow,
-                         CursorLineColumn, 1);
+                         CursorLineColumn, 1, 0);
                 break;
             case '}':
                 addToken(TokenType::RIGHT_CURLY_BRACKET, Cursor, CursorLineRow,
-                         CursorLineColumn, 1);
+                         CursorLineColumn, 1, 0);
                 break;
             case '@': {
                 uint32_t tokSize = 1;
@@ -422,7 +425,8 @@ bool Scanner::scanSource() {
                 Src->getSubStr(tokPos + 1, tokSize - 1, token);
 
                 // Check if token is instruction
-                if (isInstruction(token)) {
+                uint8_t id = 0; // Not used here
+                if (isInstruction(token, id)) {
                     throwError("Instruction keyword inside label definition",
                                tokPos);
                     skipLine();
@@ -440,7 +444,7 @@ bool Scanner::scanSource() {
                     // If the token is not an instruciton, type info or register
                     // then it must be an identifier
                     addToken(TokenType::LABEL_DEF, tokPos, tokLineRow,
-                             tokLineColumn, token.size() + 1);
+                             tokLineColumn, token.size() + 1, 0);
                 }
             } break;
             case '\n': {
@@ -451,7 +455,7 @@ bool Scanner::scanSource() {
                 }
                 if (last != nullptr && last->Type != TokenType::EOL) {
                     addToken(TokenType::EOL, Cursor, CursorLineRow,
-                             CursorLineColumn, 1);
+                             CursorLineColumn, 1, 0);
                 }
                 incLineRow();
             } break;
@@ -464,8 +468,9 @@ bool Scanner::scanSource() {
         }
     }
 
-    addToken(TokenType::END_OF_FILE, Cursor, CursorLineRow, CursorLineColumn,
-             1);
+    // TODO: Fix EOF position
+    addToken(TokenType::END_OF_FILE, Cursor, CursorLineRow, CursorLineColumn, 1,
+             0);
 
     return valid;
 }

@@ -47,7 +47,7 @@ enum class InstrParamType {
 
 struct InstrNameDef {
     const char* Str;
-    uint8_t Instr;
+    uint8_t Id;
 };
 
 struct TypeVariant {

@@ -21,13 +21,6 @@
 #include <string>
 #include <vector>
 
-const static std::array<std::string, 51> INSTRUCTIONS = {
-    "nop",  "push", "pop",  "load", "loadf", "store", "storef", "copy", "copyf",
-    "exit", "call", "ret",  "sys",  "lea",   "add",   "addf",   "sub",  "subf",
-    "mul",  "mulf", "div",  "divf", "sqrt",  "and",   "or",     "xor",  "not",
-    "lsh",  "rsh",  "srsh", "b2l",  "s2l",   "i2l",   "b2sl",   "s2sl", "i2sl",
-    "f2d",  "d2f",  "i2f",  "i2d",  "f2i",   "d2i",   "cmp",    "cmpf", "jmp",
-    "je",   "jne",  "jgt",  "jlt",  "jge",   "jle"};
 const static std::array<std::string, 6> TYPE_INFOS = {"i8",  "i16", "i32",
                                                       "i64", "f32", "f64"};
 const static std::array<std::string, 35> REGISTERS = {
@@ -68,12 +61,13 @@ class Scanner {
     bool scanWord(uint32_t& outSize);
     bool isRegister(std::string& token);
     bool isTypeInfo(std::string& token);
-    bool isInstruction(std::string& token);
+    bool isInstruction(std::string& token, uint8_t& id);
     void addToken(TokenType type,
                   uint32_t index,
                   uint32_t lineRow,
                   uint32_t lineColumn,
-                  uint32_t size);
+                  uint32_t size,
+                  uint8_t id);
     bool peekChar(uint8_t& out);
     bool eatChars(uint32_t count, uint8_t& out);
     bool eatChar(uint8_t& out);

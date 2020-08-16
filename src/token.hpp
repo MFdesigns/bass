@@ -42,10 +42,12 @@ struct Token {
           uint32_t index,
           uint32_t size,
           uint32_t lineRow,
-          uint32_t lineCol);
+          uint32_t lineCol,
+          uint8_t id);
     TokenType Type;
-    uint32_t Index;
-    uint32_t Size;
-    uint32_t LineRow;
-    uint32_t LineCol;
+    uint32_t Index = 0;
+    uint32_t Size = 0;
+    uint32_t LineRow = 0;
+    uint32_t LineCol = 0;
+    uint8_t Id = 0; // Id for what kind of instruction/register
 };

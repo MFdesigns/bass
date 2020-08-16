@@ -421,7 +421,7 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
     while (!foundInstr && instrNameDefIndex < INSTR_NAMES.size()) {
         const InstrNameDef* nameDef = &INSTR_NAMES[instrNameDefIndex];
         if (instr->Name == nameDef->Str) {
-            instrID = nameDef->Instr;
+            instrID = nameDef->Id;
             foundInstr = true;
         }
         instrNameDefIndex++;

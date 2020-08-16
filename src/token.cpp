@@ -20,6 +20,7 @@ Token::Token(TokenType type,
              uint32_t index,
              uint32_t size,
              uint32_t lineRow,
-             uint32_t lineCol)
+             uint32_t lineCol,
+             uint8_t id)
     : Type(type), Index(index), Size(size), LineRow(lineRow),
-      LineCol(lineCol){};
+      LineCol(lineCol), Id(id) {};
