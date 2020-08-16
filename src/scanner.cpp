@@ -15,6 +15,7 @@
  */
 
 #include "scanner.hpp"
+#include "asm/asm.hpp"
 #include "asm/encoding.hpp"
 #include <iomanip>
 #include <iostream>
@@ -157,15 +158,14 @@ bool Scanner::isInstruction(std::string& token, uint8_t& id) {
     return false;
 }
 
-bool Scanner::isTypeInfo(std::string& token) {
-    bool isTypeInfo = false;
-    for (const auto& typeInfo : TYPE_INFOS) {
-        if (token == typeInfo) {
-            isTypeInfo = true;
-            break;
+bool Scanner::isTypeInfo(std::string& token, uint8_t& id) {
+    for (const auto& type : UVM_TYPE_DEFS) {
+        if (token == type.Str) {
+            id = type.Id;
+            return true;
         }
     }
-    return isTypeInfo;
+    return false;
 }
 
 bool Scanner::isRegister(std::string& token) {
@@ -268,9 +268,9 @@ bool Scanner::scanSource() {
             if (isInstruction(token, id)) {
                 addToken(TokenType::INSTRUCTION, tokPos, tokLineRow,
                          tokLineColumn, token.size(), id);
-            } else if (isTypeInfo(token)) {
+            } else if (isTypeInfo(token, id)) {
                 addToken(TokenType::TYPE_INFO, tokPos, tokLineRow,
-                         tokLineColumn, token.size(), 0);
+                         tokLineColumn, token.size(), id);
             } else if (isRegister(token)) {
                 addToken(TokenType::REGISTER_DEFINITION, tokPos, tokLineRow,
                          tokLineColumn, token.size(), 0);
@@ -431,7 +431,7 @@ bool Scanner::scanSource() {
                                tokPos);
                     skipLine();
                     valid = false;
-                } else if (isTypeInfo(token)) {
+                } else if (isTypeInfo(token, id)) {
                     throwError("Type keyword inside label definition", tokPos);
                     skipLine();
                     valid = false;

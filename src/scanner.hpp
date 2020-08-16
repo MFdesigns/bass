@@ -21,8 +21,6 @@
 #include <string>
 #include <vector>
 
-const static std::array<std::string, 6> TYPE_INFOS = {"i8",  "i16", "i32",
-                                                      "i64", "f32", "f64"};
 const static std::array<std::string, 35> REGISTERS = {
     "ip",  "bp", "sp",  "r0",  "r1",  "r2",  "r3",  "r4",  "r5",
     "r6",  "r7", "r8",  "r9",  "r10", "r11", "r12", "r13", "r14",
@@ -60,7 +58,7 @@ class Scanner {
     void skipLine();
     bool scanWord(uint32_t& outSize);
     bool isRegister(std::string& token);
-    bool isTypeInfo(std::string& token);
+    bool isTypeInfo(std::string& token, uint8_t& id);
     bool isInstruction(std::string& token, uint8_t& id);
     void addToken(TokenType type,
                   uint32_t index,
