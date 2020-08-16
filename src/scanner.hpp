@@ -64,6 +64,7 @@ class Scanner {
     Source* Src = nullptr;
     std::vector<Token>* Tokens = nullptr;
     void throwError(const char* msg, uint32_t start);
+    void skipLine();
     bool scanWord(uint32_t& outSize);
     bool isRegister(std::string& token);
     bool isTypeInfo(std::string& token);

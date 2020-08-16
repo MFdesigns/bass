@@ -196,7 +196,8 @@ void Scanner::throwError(const char* msg, uint32_t start) {
               << "  " << std::setw(2 + lineNumber.size()) << std::setfill(' ')
               << " |" << std::setw(errOffset + 1) << std::setfill(' ') << ' '
               << std::setw(CursorLineColumn - errOffset) << std::setfill('~')
-              << '~' << '\n';
+              << '~' << '\n'
+              << std::endl;
 }
 
 bool Scanner::scanWord(uint32_t& outSize) {
@@ -225,10 +226,20 @@ bool Scanner::scanWord(uint32_t& outSize) {
     return true;
 }
 
+void Scanner::skipLine() {
+    uint8_t peek = ' ';
+    bool terminated = peekChar(peek);
+    while (!terminated && peek != '\n') {
+        incCursor();
+        terminated = peekChar(peek);
+    }
+}
+
 bool Scanner::scanSource() {
     uint8_t* data = Src->getData();
     uint8_t c = data[Cursor]; // char at current cursor position
     bool eof = false;
+    bool valid = true;
     while (!eof) {
         // Take a snapshot of the current token position before parsing
         // further and increasing the cursor
@@ -242,7 +253,10 @@ bool Scanner::scanSource() {
             bool validId = scanWord(tokSize);
             if (!validId) {
                 throwError("Unexpected token in identifier", tokPos);
-                return false;
+                skipLine();
+                valid = false;
+                eof = eatChar(c);
+                continue;
             }
 
             std::string token{};
@@ -274,6 +288,7 @@ bool Scanner::scanSource() {
             std::string token;
             TokenType type = TokenType::INTEGER_NUMBER;
             bool terminated = false;
+            bool validNumber = true;
             uint8_t peek;
             terminated = peekChar(peek);
             // Check for possible hex prefix
@@ -295,10 +310,12 @@ bool Scanner::scanSource() {
                     } else {
                         throwError("Expected hex number",
                                    Cursor - token.size());
-                        return false;
+                        skipLine();
+                        validNumber = false;
+                        valid = false;
                     }
 
-                } while (!terminated);
+                } while (!terminated && validNumber);
             } else {
                 do {
                     terminated = peekChar(peek);
@@ -322,16 +339,23 @@ bool Scanner::scanSource() {
                     } else if (c == '.' && type == TokenType::FLOAT_NUMBER) {
                         throwError("More than one decimal point",
                                    Cursor - token.size());
-                        return false;
+                        skipLine();
+                        valid = false;
+                        validNumber = false;
                     } else {
                         throwError("Expected number", Cursor - token.size());
-                        return false;
+                        skipLine();
+                        valid = false;
+                        validNumber = false;
                     }
-                } while (!terminated);
+                } while (!terminated && validNumber);
             }
 
-            addToken(type, tokPos, tokLineRow, tokLineColumn, token.size());
+            if (validNumber) {
+                addToken(type, tokPos, tokLineRow, tokLineColumn, token.size());
+            }
             eof = eatChar(c);
+
         } else {
             switch (c) {
             case '/': {
@@ -344,8 +368,9 @@ bool Scanner::scanSource() {
                         terminated = peekChar(peek);
                     }
                 } else {
-                    throwError("Unexpected token", Cursor);
-                    return false;
+                    throwError("Expected double back slash", Cursor);
+                    skipLine();
+                    valid = false;
                 }
             } break;
             case '+':
@@ -386,7 +411,10 @@ bool Scanner::scanSource() {
                 bool validId = scanWord(tokSize);
                 if (!validId) {
                     throwError("Unexpected token in label definition", tokPos);
-                    return false;
+                    skipLine();
+                    eof = eatChar(c);
+                    valid = false;
+                    continue;
                 }
 
                 // Get token without @ sign
@@ -397,14 +425,17 @@ bool Scanner::scanSource() {
                 if (isInstruction(token)) {
                     throwError("Instruction keyword inside label definition",
                                tokPos);
-                    return false;
+                    skipLine();
+                    valid = false;
                 } else if (isTypeInfo(token)) {
                     throwError("Type keyword inside label definition", tokPos);
-                    return false;
+                    skipLine();
+                    valid = false;
                 } else if (isRegister(token)) {
                     throwError("Register keyword inside label definition",
                                tokPos);
-                    return false;
+                    skipLine();
+                    valid = false;
                 } else {
                     // If the token is not an instruciton, type info or register
                     // then it must be an identifier
@@ -414,8 +445,11 @@ bool Scanner::scanSource() {
             } break;
             case '\n': {
                 // Only add EOL tokens once in a row
-                Token last = Tokens->back();
-                if (last.Type != TokenType::EOL) {
+                Token* last = nullptr;
+                if (Tokens->size() > 0) {
+                    last = &Tokens->back();
+                }
+                if (last != nullptr && last->Type != TokenType::EOL) {
                     addToken(TokenType::EOL, Cursor, CursorLineRow,
                              CursorLineColumn, 1);
                 }
@@ -423,7 +457,8 @@ bool Scanner::scanSource() {
             } break;
             default:
                 throwError("Unexpected character", Cursor);
-                return false;
+                skipLine();
+                valid = false;
             }
             eof = eatChar(c);
         }
@@ -432,5 +467,5 @@ bool Scanner::scanSource() {
     addToken(TokenType::END_OF_FILE, Cursor, CursorLineRow, CursorLineColumn,
              1);
 
-    return true;
+    return valid;
 }
