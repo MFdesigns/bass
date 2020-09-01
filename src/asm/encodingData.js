@@ -78,17 +78,6 @@ const PARAM_TYPES = {
     'sysID': 'SYS_INT',
 };
 
-/**
- * Gets all required paths
- */
-function getFilePath() {
-    // Set current directory name
-    const p = import.meta.url.replace('file:///', '').split('/');
-    DIRNAME = p.slice(0, p.length - 1).join('/');
-    // Return filepath of JSON file
-    return `${DIRNAME}/${FILE_NAME}`;
-}
-
 function generateHeaderFile(data) {
     // File output buffer
     let buffer = `${HEADER}\n`;
@@ -173,8 +162,7 @@ function generateHeaderFile(data) {
 }
 
 (async function main() {
-    const p = getFilePath();
-    const data = await readJson(p);
+    const data = await readJson('./src/asm/encodingData.json');
     const content = generateHeaderFile(data);
-    await Deno.writeTextFile(`${DIRNAME}/encoding.hpp`, content);
+    await Deno.writeTextFile(`./src/asm/encoding.hpp`, content);
 }())
