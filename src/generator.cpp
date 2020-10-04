@@ -57,7 +57,7 @@ void Generator::createHeader() {
 }
 
 void Generator::createSectionTable() {
-    constexpr uint32_t secTableSize = 2 * SEC_TABLE_ENTRY_SIZE;
+    constexpr uint32_t secTableSize = 2 * SEC_TABLE_ENTRY_SIZE + 4; // + 4 because of the section table size uint32_t at the beginning
     uint64_t secNameVAddr = HEADER_SIZE + secTableSize;
     Cursor += secTableSize;
     // Allocate section table
@@ -260,6 +260,12 @@ void Generator::createByteCode() {
 void Generator::fillSectionTable() {
     std::array<Section*, 2> tmpSections = {SecNameTable, SecCode};
     uint8_t tmpCursor = HEADER_SIZE;
+
+    // Put section table size
+    uint32_t secTableSize = tmpSections.size() * SEC_TABLE_ENTRY_SIZE;
+    Buffer->write(tmpCursor, (uint8_t*)&secTableSize, 4);
+    tmpCursor += 4;
+
     for (auto& sec : tmpSections) {
         uint8_t tmp[SEC_TABLE_ENTRY_SIZE] = {};
         tmp[0] = sec->Type;
