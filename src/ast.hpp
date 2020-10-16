@@ -34,11 +34,14 @@ enum class ASTType {
     TYPE_INFO,
 };
 
-enum class RegisterLayout {
-    IR,
-    IR_INT,
-    IR_IR_INT,
-};
+// These values are used to define the layout of a register offset.
+// All of these are positive to make them the negative layout version set the
+// first bit. RO_LAYOUT_IR_INT -> 0010 1111  = <iR> + <iR> * <i16> NEGATIVE MASK
+// -> 1000 0000 OR ===========================
+//                  -> 1010 1111  = <iR> - <iR> * <i16>
+constexpr uint8_t RO_LAYOUT_IR = 0x4F;        // <iR>
+constexpr uint8_t RO_LAYOUT_IR_INT = 0x2F;    // <iR> + <i32>
+constexpr uint8_t RO_LAYOUT_IR_IR_INT = 0x1F; // <iR> + <iR> * <i16>
 
 class ASTNode {
   public:
@@ -111,21 +114,24 @@ class RegisterId : public ASTNode {
     uint8_t Id;
 };
 
+union ROInt {
+    uint16_t U16;
+    uint32_t U32 = 0;
+};
+
 class RegisterOffset : public ASTNode {
   public:
     RegisterOffset();
     RegisterOffset(uint32_t pos,
                    uint32_t lineNr,
                    uint32_t lineCol,
-                   RegisterLayout layout,
+                   uint8_t layout,
                    RegisterId* base,
-                   RegisterId* offset,
-                   IntegerNumber* immediate);
-    RegisterLayout Layout;
+                   RegisterId* offset);
+    uint8_t Layout = 0;
     RegisterId* Base = nullptr;
     RegisterId* Offset = nullptr;
-    IntegerNumber* Immediate = nullptr;
-    bool Signed = false;
+    ROInt Immediate;
 };
 
 class TypeInfo : public ASTNode {

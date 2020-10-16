@@ -57,7 +57,9 @@ void Generator::createHeader() {
 }
 
 void Generator::createSectionTable() {
-    constexpr uint32_t secTableSize = 2 * SEC_TABLE_ENTRY_SIZE + 4; // + 4 because of the section table size uint32_t at the beginning
+    constexpr uint32_t secTableSize =
+        2 * SEC_TABLE_ENTRY_SIZE +
+        4; // + 4 because of the section table size uint32_t at the beginning
     uint64_t secNameVAddr = HEADER_SIZE + secTableSize;
     Cursor += secTableSize;
     // Allocate section table
@@ -91,56 +93,18 @@ void Generator::writeFile() {
 }
 
 void Generator::emitRegisterOffset(RegisterOffset* regOff, uint8_t* out) {
-    uint8_t layout = 0;
+    // Encode RO layout byte
+    out[0] = regOff->Layout;
 
     // Encode base register
-    layout |= RO_ENC_BASE_IR;
     out[1] = regOff->Base->Id;
 
-    if (regOff->Layout == RegisterLayout::IR_INT) {
-        if (regOff->Signed) {
-            layout |= RO_ENC_SIGNED;
-        }
-
-        switch (regOff->Immediate->DataType) {
-        case UVM_TYPE_I8: {
-            uint8_t typedNum = (uint8_t)regOff->Immediate->Num;
-            out[2] = typedNum;
-            layout |= RO_ENC_OFFSET_I8;
-        } break;
-        case UVM_TYPE_I16: {
-            uint16_t typedNum = (uint16_t)regOff->Immediate->Num;
-            std::memcpy(&out[2], &typedNum, 2);
-            layout |= RO_ENC_OFFSET_I16;
-        } break;
-        case UVM_TYPE_I32: {
-            uint16_t typedNum = (uint16_t)regOff->Immediate->Num;
-            std::memcpy(&out[2], &typedNum, 4);
-            layout |= RO_ENC_OFFSET_I32;
-        } break;
-        }
-    } else if (regOff->Layout == RegisterLayout::IR_IR_INT) {
-        if (regOff->Signed) {
-            layout |= RO_ENC_SIGNED;
-        }
-        layout |= RO_ENC_OFFSET_IR;
+    if ((regOff->Layout & RO_LAYOUT_IR_INT) == RO_LAYOUT_IR_INT) {
+        std::memcpy(&out[2], &regOff->Immediate.U16, 4);
+    } else if ((regOff->Layout & RO_LAYOUT_IR_IR_INT) == RO_LAYOUT_IR_IR_INT) {
         out[2] = regOff->Offset->Id;
-
-        switch (regOff->Immediate->DataType) {
-        case UVM_TYPE_I8: {
-            uint8_t typedNum = (uint8_t)regOff->Immediate->Num;
-            out[3] = typedNum;
-            layout |= RO_ENC_FACTOR_I8;
-        } break;
-        case UVM_TYPE_I16: {
-            uint16_t typedNum = (uint16_t)regOff->Immediate->Num;
-            std::memcpy(&out[3], &typedNum, 2);
-            layout |= RO_ENC_FACTOR_I16;
-        } break;
-        }
+        std::memcpy(&out[3], &regOff->Immediate.U16, 2);
     }
-
-    out[0] = layout;
 }
 
 void Generator::emitInstruction(Instruction* instr) {

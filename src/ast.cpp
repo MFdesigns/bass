@@ -73,12 +73,11 @@ RegisterOffset::RegisterOffset() : ASTNode(ASTType::REGISTER_OFFSET){};
 RegisterOffset::RegisterOffset(uint32_t pos,
                                uint32_t lineNr,
                                uint32_t lineCol,
-                               RegisterLayout layout,
+                               uint8_t layout,
                                RegisterId* base,
-                               RegisterId* offset,
-                               IntegerNumber* immediate)
+                               RegisterId* offset)
     : ASTNode(ASTType::REGISTER_OFFSET, pos, lineNr, lineCol), Layout(layout),
-      Base(base), Offset(offset), Immediate(immediate) {}
+      Base(base), Offset(offset) {}
 
 TypeInfo::TypeInfo(uint32_t pos,
                    uint32_t lineNr,

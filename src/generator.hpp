@@ -31,16 +31,6 @@ constexpr uint8_t SEC_PERM_READ = 0b1000'0000;
 constexpr uint8_t SEC_PERM_WRITE = 0b0100'0000;
 constexpr uint8_t SEC_PERM_EXECUTE = 0b0010'0000;
 
-// These flags are used to generate the register offset layout byte
-constexpr uint8_t RO_ENC_BASE_IR = 0b0100'0000;
-constexpr uint8_t RO_ENC_SIGNED = 0b0010'0000;
-constexpr uint8_t RO_ENC_OFFSET_IR = 0b0000'0100;
-constexpr uint8_t RO_ENC_OFFSET_I8 = 0b0000'1000;
-constexpr uint8_t RO_ENC_OFFSET_I16 = 0b0000'1100;
-constexpr uint8_t RO_ENC_OFFSET_I32 = 0b0001'0000;
-constexpr uint8_t RO_ENC_FACTOR_I8 = 0b0000'0001;
-constexpr uint8_t RO_ENC_FACTOR_I16 = 0b0000'0010;
-
 constexpr uint32_t HEADER_SIZE = 0x60;
 constexpr uint32_t SEC_TABLE_ENTRY_SIZE = 0x1A;
 

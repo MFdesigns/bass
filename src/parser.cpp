@@ -117,6 +117,8 @@ void Parser::throwError(const char* msg, Token& tok) {
 }
 
 bool Parser::parseRegOffset(Instruction* instr) {
+    constexpr uint8_t RO_LAYOUT_NEG = 0b1000'0000;
+    constexpr uint8_t RO_LAYOUT_POS = 0b0000'0000;
     RegisterOffset* regOff = new RegisterOffset();
     Token* t = eatToken();
 
@@ -135,19 +137,20 @@ bool Parser::parseRegOffset(Instruction* instr) {
         regOff->Position = t->Index;
         regOff->LineNumber = t->LineRow;
         regOff->LineColumn = t->LineCol;
-        regOff->Layout = RegisterLayout::IR;
+        regOff->Layout = RO_LAYOUT_IR;
         instr->Params.push_back(regOff);
         return true;
     } else if (t->Type == TokenType::PLUS_SIGN) {
-        regOff->Signed = false;
+        regOff->Layout |= RO_LAYOUT_POS;
     } else if (t->Type == TokenType::MINUS_SIGN) {
-        regOff->Signed = true;
+        regOff->Layout |= RO_LAYOUT_NEG;
     } else {
         throwError("Unexpected token in register offset", *t);
         return false;
     }
 
     t = eatToken();
+    // <iR> +/- <i32>
     if (t->Type == TokenType::INTEGER_NUMBER) {
         Token* peek;
         bool eof = !peekToken(&peek);
@@ -157,36 +160,25 @@ bool Parser::parseRegOffset(Instruction* instr) {
             Src->getSubStr(t->Index, t->Size, numStr);
             int64_t num = strToInt(numStr);
 
-            IntegerNumber* intNum = new IntegerNumber();
-            intNum->Position = t->Index;
-            intNum->LineNumber = t->LineRow;
-            intNum->LineColumn = t->LineCol;
-            intNum->Num = num;
-
-            // Figure at the smallest data type which the number fits into
-            if (num <= UINT8_MAX) {
-                intNum->DataType = UVM_TYPE_I8;
-            } else if (num <= UINT16_MAX) {
-                intNum->DataType = UVM_TYPE_I16;
-            } else if (num <= UINT32_MAX) {
-                intNum->DataType = UVM_TYPE_I32;
-            } else {
+            // <iR> + <i32> expects integer to have a maximum size of 32 bits
+            // Check if the requirement is meet otherwise throw error
+            if (num >> 32 != 0) {
                 throwError(
-                    "Register offset immedate does not fit into 32-bit value",
+                    "Register offset immediate does not fit into 32-bit value",
                     *t);
                 return false;
             }
+            regOff->Immediate.U32 = (uint32_t)num;
 
             // TODO: Register offset position is not correct
             regOff->Position = t->Index;
             regOff->LineNumber = t->LineRow;
             regOff->LineColumn = t->LineCol;
-            regOff->Layout = RegisterLayout::IR_INT;
-            regOff->Immediate = intNum;
+            regOff->Layout |= RO_LAYOUT_IR_INT;
             instr->Params.push_back(regOff);
             t = eatToken();
         } else {
-            throwError("Expected closing bracket after immedate offset inside "
+            throwError("Expected closing bracket after immediate offset inside "
                        "register offset ]",
                        *t);
             return false;
@@ -208,27 +200,23 @@ bool Parser::parseRegOffset(Instruction* instr) {
         std::string numStr;
         Src->getSubStr(t->Index, t->Size, numStr);
         int64_t num = strToInt(numStr);
-        regOff->Immediate =
-            new IntegerNumber(t->Index, t->LineRow, t->LineCol, num);
+
+        // <iR> +/- <iR> * <i16> expects integer to have a maximum size of 16
+        // bits Check if the requirement is meet otherwise throw error
+        if (num >> 16 != 0) {
+            throwError(
+                "Register offset immediate does not fit into 16-bit value", *t);
+            return false;
+        }
+        regOff->Immediate.U16 = (uint16_t)num;
         t = eatToken();
 
         if (t->Type == TokenType::RIGHT_SQUARE_BRACKET) {
-            if (num <= UINT8_MAX) {
-                regOff->Immediate->DataType = UVM_TYPE_I8;
-            } else if (num <= UINT16_MAX) {
-                regOff->Immediate->DataType = UVM_TYPE_I16;
-            } else {
-                throwError(
-                    "Register offset immedate does not fit into 16-bit value",
-                    *t);
-                return false;
-            }
-
             // TODO: Register offset position is not correct
             regOff->Position = t->Index;
             regOff->LineNumber = t->LineRow;
             regOff->LineColumn = t->LineCol;
-            regOff->Layout = RegisterLayout::IR_IR_INT;
+            regOff->Layout |= RO_LAYOUT_IR_IR_INT;
             instr->Params.push_back(regOff);
         } else {
             throwError("Expectd closing bracket after factor", *t);
