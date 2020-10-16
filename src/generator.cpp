@@ -85,7 +85,7 @@ void Generator::createSectionTable() {
 
 void Generator::writeFile() {
     FilePath->replace_filename("main.ux");
-    std::ofstream stream{*FilePath};
+    std::ofstream stream{*FilePath, std::ios::binary};
     Buffer->writeToStream(stream);
     stream.close();
 }
