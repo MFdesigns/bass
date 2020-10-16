@@ -213,9 +213,10 @@ bool Scanner::scanWord(uint32_t& outSize) {
             // char
             uint8_t peek;
             terminated = !Src->getChar(Cursor + 1, peek);
-            if (!terminated && (peek == '\t' || peek == ' ' || peek == '{' ||
-                                peek == '\n' || peek == ',' || peek == ']' ||
-                                peek == '+' || peek == '-' || peek == '*')) {
+            if (!terminated &&
+                (peek == '\t' || peek == ' ' || peek == '{' || peek == '\n' ||
+                 peek == '\r' || peek == ',' || peek == ']' || peek == '+' ||
+                 peek == '-' || peek == '*')) {
                 terminated = true;
             } else if (!terminated) {
                 eatChar(c);
@@ -304,7 +305,7 @@ bool Scanner::scanSource() {
                         c >= 'A' && c <= 'F') {
                         token.push_back(c);
                         if (peek == '\t' || peek == ' ' || peek == ',' ||
-                            peek == '\n' || peek == ']') {
+                            peek == '\n' || peek == '\r' || peek == ']') {
                             terminated = true;
                         } else {
                             terminated = eatChar(c);
@@ -324,7 +325,7 @@ bool Scanner::scanSource() {
                     if (c >= '0' && c <= '9') {
                         token.push_back(c);
                         if (peek == '\t' || peek == ' ' || peek == ',' ||
-                            peek == '\n' || peek == ']') {
+                            peek == '\n' || peek == '\r' || peek == ']') {
                             terminated = true;
                         } else {
                             terminated = eatChar(c);
@@ -333,7 +334,7 @@ bool Scanner::scanSource() {
                         type = TokenType::FLOAT_NUMBER;
                         token.push_back(c);
                         if (peek == '\t' || peek == ' ' || peek == ',' ||
-                            peek == '\n' || peek == ']') {
+                            peek == '\n' || peek == '\r' || peek == ']') {
                             terminated = true;
                         } else {
                             terminated = eatChar(c);
@@ -447,6 +448,9 @@ bool Scanner::scanSource() {
                              tokLineColumn, token.size() + 1, 0);
                 }
             } break;
+            case '\r':
+                // Skip CR
+                break;
             case '\n': {
                 // Only add EOL tokens once in a row
                 Token* last = nullptr;
