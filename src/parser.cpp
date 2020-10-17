@@ -52,7 +52,9 @@ int64_t Parser::strToInt(std::string& str) {
             base = 16;
         }
     }
-    num = std::stoll(str, 0, base);
+    // Warning: this only works with unsigned numbers and  does not handle
+    // sigend numbers
+    num = std::stoull(str, 0, base);
     return num;
 }
 
