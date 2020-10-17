@@ -31,7 +31,7 @@ uint8_t Parser::getUVMType(Token* tok) {
     if (typeName == "i8") {
         type = UVM_TYPE_I8;
     } else if (typeName == "i16") {
-        type = UVM_TYPE_I8;
+        type = UVM_TYPE_I16;
     } else if (typeName == "i32") {
         type = UVM_TYPE_I32;
     } else if (typeName == "i64") {
