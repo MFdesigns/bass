@@ -34,11 +34,15 @@ enum class ASTType {
     TYPE_INFO,
 };
 
+// clang-format off
 // These values are used to define the layout of a register offset.
 // All of these are positive to make them the negative layout version set the
-// first bit. RO_LAYOUT_IR_INT -> 0010 1111  = <iR> + <iR> * <i16> NEGATIVE MASK
-// -> 1000 0000 OR ===========================
+// first bit.
+// RO_LAYOUT_IR_INT -> 0010 1111  = <iR> + <iR> * <i16>
+// NEGATIVE MASK    -> 1000 0000
+// =========== OR ==============
 //                  -> 1010 1111  = <iR> - <iR> * <i16>
+// clang-format on
 constexpr uint8_t RO_LAYOUT_IR = 0x4F;        // <iR>
 constexpr uint8_t RO_LAYOUT_IR_INT = 0x2F;    // <iR> + <i32>
 constexpr uint8_t RO_LAYOUT_IR_IR_INT = 0x1F; // <iR> + <iR> * <i16>
