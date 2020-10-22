@@ -427,6 +427,11 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
         if (paramList->Params.size() == instr->Params.size()) {
             bool validList = true;
             uint32_t listIndex = 0;
+
+            // This is a reference used to tag every float/int paramter with the
+            // correct type
+            TypeInfo* type = nullptr;
+
             while (validList && listIndex < paramList->Params.size()) {
                 ASTNode* node = instr->Params[listIndex];
                 switch (paramList->Params[listIndex]) {
@@ -437,11 +442,11 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
                         break;
                     }
 
-                    TypeInfo* info = dynamic_cast<TypeInfo*>(node);
-                    if (info->DataType != UVM_TYPE_I8 &&
-                        info->DataType != UVM_TYPE_I16 &&
-                        info->DataType != UVM_TYPE_I32 &&
-                        info->DataType != UVM_TYPE_I64) {
+                    type = dynamic_cast<TypeInfo*>(node);
+                    if (type->DataType != UVM_TYPE_I8 &&
+                        type->DataType != UVM_TYPE_I16 &&
+                        type->DataType != UVM_TYPE_I32 &&
+                        type->DataType != UVM_TYPE_I64) {
                         validList = false;
                     }
                 } break;
@@ -452,9 +457,9 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
                         break;
                     }
 
-                    TypeInfo* info = dynamic_cast<TypeInfo*>(node);
-                    if (info->DataType != UVM_TYPE_F32 &&
-                        info->DataType != UVM_TYPE_F64) {
+                    type = dynamic_cast<TypeInfo*>(node);
+                    if (type->DataType != UVM_TYPE_F32 &&
+                        type->DataType != UVM_TYPE_F64) {
                         validList = false;
                     }
                 } break;
@@ -504,18 +509,30 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
                 case InstrParamType::INT_NUM: {
                     if (node->Type != ASTType::INTEGER_NUMBER) {
                         validList = false;
+                        break;
                     }
+
+                    IntegerNumber* num = dynamic_cast<IntegerNumber*>(node);
+                    num->DataType = type->DataType;
                 } break;
                 case InstrParamType::FLOAT_NUM: {
                     if (node->Type != ASTType::FLOAT_NUMBER) {
                         validList = false;
+                        break;
                     }
+
+                    FloatNumber* num = dynamic_cast<FloatNumber*>(node);
+                    num->DataType = type->DataType;
                 } break;
                 case InstrParamType::SYS_INT: {
-                    // TODO: Check for valid sys int
                     if (node->Type != ASTType::INTEGER_NUMBER) {
                         validList = false;
+                        break;
                     }
+
+                    IntegerNumber* num = dynamic_cast<IntegerNumber*>(node);
+                    num->DataType =
+                        UVM_TYPE_I8; // syscall args are always 8-bit
                 } break;
                 }
                 listIndex++;

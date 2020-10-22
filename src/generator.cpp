@@ -136,7 +136,6 @@ void Generator::emitInstruction(Instruction* instr) {
     instrSize++;
 
     // Emits paramters
-    uint8_t type = 0;
     for (auto& param : instr->Params) {
         switch (param->Type) {
         // TODO: Generator does not know if the id is func or label refs without
@@ -146,30 +145,30 @@ void Generator::emitInstruction(Instruction* instr) {
             break;
         case ASTType::FLOAT_NUMBER: {
             FloatNumber* num = dynamic_cast<FloatNumber*>(param);
-            if (type == UVM_TYPE_F32) {
+            if (num->DataType == UVM_TYPE_F32) {
                 float typedNum = (float)num->Num;
                 std::memcpy(&temp[instrSize], &typedNum, 4);
                 instrSize += 4;
-            } else if (type == UVM_TYPE_F64) {
+            } else if (num->DataType == UVM_TYPE_F64) {
                 std::memcpy(&temp[instrSize], &num->Num, 8);
                 instrSize += 8;
             }
         } break;
         case ASTType::INTEGER_NUMBER: {
             IntegerNumber* num = dynamic_cast<IntegerNumber*>(param);
-            if (type == UVM_TYPE_I8) {
+            if (num->DataType == UVM_TYPE_I8) {
                 uint8_t typedNum = (uint8_t)num->Num;
                 temp[instrSize] = typedNum;
                 instrSize++;
-            } else if (type == UVM_TYPE_I16) {
+            } else if (num->DataType == UVM_TYPE_I16) {
                 uint16_t typedNum = (uint16_t)num->Num;
                 std::memcpy(&temp[instrSize], &typedNum, 2);
                 instrSize += 2;
-            } else if (type == UVM_TYPE_I32) {
+            } else if (num->DataType == UVM_TYPE_I32) {
                 uint32_t typedNum = (uint32_t)num->Num;
                 std::memcpy(&temp[instrSize], &typedNum, 4);
                 instrSize += 4;
-            } else if (type == UVM_TYPE_I64) {
+            } else if (num->DataType == UVM_TYPE_I64) {
                 std::memcpy(&temp[instrSize], &num->Num, 8);
                 instrSize += 8;
             }
@@ -186,9 +185,8 @@ void Generator::emitInstruction(Instruction* instr) {
         } break;
         case ASTType::TYPE_INFO: {
             TypeInfo* typeInfo = dynamic_cast<TypeInfo*>(param);
-            type = typeInfo->DataType;
             if (instr->ParamList->Flags & INSTR_FLAG_ENCODE_TYPE) {
-                temp[instrSize] = type;
+                temp[instrSize] = typeInfo->DataType;
                 instrSize++;
             }
         } break;
