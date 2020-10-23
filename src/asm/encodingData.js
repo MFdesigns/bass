@@ -50,9 +50,10 @@ const HEADER =
 
 #pragma once
 #include "asm.hpp"
+#include <array>
 #include <cstdint>
 #include <map>
-#include <array>
+#include <string>
 #include <vector>
 
 /*
@@ -121,7 +122,7 @@ function generateHeaderFile(data) {
     buffer += 'namespace Asm {\n';
 
     // Generate instruction name lookup table
-    buffer += 'const std::map<const char*, uint8_t> INSTR_NAMES {\n';
+    buffer += 'const std::map<std::string, uint8_t> INSTR_NAMES {\n';
     data.instructions.forEach((instr, i) => {
         buffer += `${tab(1)}{"${instr.name}", ${i}},\n`;
     });
