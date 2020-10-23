@@ -117,18 +117,21 @@ function generateHeaderFile(data) {
     // Create new output buffer and insert .hpp header
     let buffer = `${HEADER}\n`;
 
+    // Add namespace
+    buffer += 'namespace Asm {\n';
+
     // Generate instruction name lookup table
-    buffer += 'constexpr std::map<const char*, uint8_t> INSTR_NAMES {\n';
+    buffer += 'const std::map<const char*, uint8_t> INSTR_NAMES {\n';
     data.instructions.forEach((instr, i) => {
         buffer += `${tab(1)}{"${instr.name}", ${i}},\n`;
     });
     // Closing brace of 'constexpr std::map<const char*, uint8_t> INSTR_NAMES {'
-    buffer += '}\n\n';
+    buffer += '};\n\n';
 
     // Generate instruction encoding resolution
-    buffer += 'constexpr std::array<std::vector<InstrParamList>> INSTR_ASM_DEFS {\n'
+    buffer += `const std::array<std::vector<InstrParamList>, ${data.instructions.length}> INSTR_ASM_DEFS {\n`
     data.instructions.forEach((instr, i) => {
-        buffer += `${tab(1)}{\n`;
+        buffer += `${tab(1)}std::vector<InstrParamList>{\n`;
 
         // Instruction paramlist array
         instr.paramList.forEach((paramList) => {
@@ -171,7 +174,8 @@ function generateHeaderFile(data) {
         buffer += `${tab(1)}},\n`;
     });
     // Closing brace of 'constexpr std::array<InstrParamList> INSTR_ASM_DEFS {\n'
-    buffer += '}\n\n';
+    buffer += '};\n\n';
+    buffer += '} // namespace Asm\n'; // Namespace closing bracket
 
     return buffer;
 }
