@@ -17,6 +17,7 @@
 #include "scanner.hpp"
 #include "asm/asm.hpp"
 #include "asm/encoding.hpp"
+#include "asm/encodingNew.hpp"
 #include <iomanip>
 #include <iostream>
 
@@ -144,24 +145,25 @@ void Scanner::addToken(TokenType type,
                        uint32_t lineRow,
                        uint32_t lineColumn,
                        uint32_t size,
-                       uint8_t id) {
-    Tokens->emplace_back(type, index, size, lineRow, lineColumn, id);
+                       uint8_t tag) {
+    Tokens->emplace_back(type, index, size, lineRow, lineColumn, tag);
 }
 
-bool Scanner::isInstruction(std::string& token, uint8_t& id) {
-    for (const auto& instr : INSTR_NAMES) {
-        if (token == instr.Str) {
-            id = instr.Id;
-            return true;
-        }
+bool Scanner::isInstruction(std::string& token, uint8_t& tag) {
+    bool isInstr = false;
+    auto iter = Asm::INSTR_NAMES.find(token);
+    if (iter != Asm::INSTR_NAMES.end()) {
+        tag = iter->second;
+        isInstr = true;
     }
-    return false;
+
+    return isInstr;
 }
 
-bool Scanner::isTypeInfo(std::string& token, uint8_t& id) {
+bool Scanner::isTypeInfo(std::string& token, uint8_t& tag) {
     for (const auto& type : UVM_TYPE_DEFS) {
         if (token == type.Str) {
-            id = type.Id;
+            tag = type.Id;
             return true;
         }
     }
@@ -265,13 +267,13 @@ bool Scanner::scanSource() {
             Src->getSubStr(tokPos, tokSize, token);
 
             // Check if token is instruction
-            uint8_t id = 0;
-            if (isInstruction(token, id)) {
+            uint8_t tag = 0;
+            if (isInstruction(token, tag)) {
                 addToken(TokenType::INSTRUCTION, tokPos, tokLineRow,
-                         tokLineColumn, token.size(), id);
-            } else if (isTypeInfo(token, id)) {
+                         tokLineColumn, token.size(), tag);
+            } else if (isTypeInfo(token, tag)) {
                 addToken(TokenType::TYPE_INFO, tokPos, tokLineRow,
-                         tokLineColumn, token.size(), id);
+                         tokLineColumn, token.size(), tag);
             } else if (isRegister(token)) {
                 addToken(TokenType::REGISTER_DEFINITION, tokPos, tokLineRow,
                          tokLineColumn, token.size(), 0);
@@ -426,13 +428,13 @@ bool Scanner::scanSource() {
                 Src->getSubStr(tokPos + 1, tokSize - 1, token);
 
                 // Check if token is instruction
-                uint8_t id = 0; // Not used here
-                if (isInstruction(token, id)) {
+                uint8_t tag = 0; // Not used here
+                if (isInstruction(token, tag)) {
                     throwError("Instruction keyword inside label definition",
                                tokPos);
                     skipLine();
                     valid = false;
-                } else if (isTypeInfo(token, id)) {
+                } else if (isTypeInfo(token, tag)) {
                     throwError("Type keyword inside label definition", tokPos);
                     skipLine();
                     valid = false;

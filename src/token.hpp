@@ -49,5 +49,5 @@ struct Token {
     uint32_t Size = 0;
     uint32_t LineRow = 0;
     uint32_t LineCol = 0;
-    uint8_t Id = 0; // Id for what kind of instruction/register
+    uint8_t Tag = 0; // Id for what kind of instruction/register
 };

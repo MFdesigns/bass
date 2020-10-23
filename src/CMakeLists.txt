@@ -9,4 +9,5 @@ add_executable(bass
     fileBuffer.cpp fileBuffer.hpp
     asm/asm.hpp
     asm/encoding.hpp
+    asm/encodingNew.hpp
 )

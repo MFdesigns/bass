@@ -58,14 +58,14 @@ class Scanner {
     void skipLine();
     bool scanWord(uint32_t& outSize);
     bool isRegister(std::string& token);
-    bool isTypeInfo(std::string& token, uint8_t& id);
-    bool isInstruction(std::string& token, uint8_t& id);
+    bool isTypeInfo(std::string& token, uint8_t& tag);
+    bool isInstruction(std::string& token, uint8_t& tag);
     void addToken(TokenType type,
                   uint32_t index,
                   uint32_t lineRow,
                   uint32_t lineColumn,
                   uint32_t size,
-                  uint8_t id);
+                  uint8_t tag);
     bool peekChar(uint8_t& out);
     bool eatChars(uint32_t count, uint8_t& out);
     bool eatChar(uint8_t& out);

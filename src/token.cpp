@@ -21,6 +21,6 @@ Token::Token(TokenType type,
              uint32_t size,
              uint32_t lineRow,
              uint32_t lineCol,
-             uint8_t id)
+             uint8_t tag)
     : Type(type), Index(index), Size(size), LineRow(lineRow), LineCol(lineCol),
-      Id(id){};
+      Tag(tag){};
