@@ -21,10 +21,12 @@
 
 import { readJson } from "https://deno.land/std/fs/mod.ts";
 
-let DIRNAME = '';
-const FILE_NAME = 'encodingData.json';
-// TODO: Make this a function
+const DIRNAME = './src/asm/';
+const IN_FILE_NAME = 'encodingData.json';
+const OUT_FILE_NAME = 'encodingNew.hpp';
+const OUT_OLD_FILE_NAME = 'encoding.hpp';
 const TAB = '    ';
+// TODO: Remove once old generator is replaced
 const TAB2 = `${TAB}${TAB}`;
 const TAB3 = `${TAB}${TAB}${TAB}`;
 const TAB4 = `${TAB}${TAB}${TAB}${TAB}`;
@@ -50,6 +52,7 @@ const HEADER =
 #include "asm.hpp"
 #include <cstdint>
 #include <map>
+#include <array>
 #include <vector>
 
 /*
@@ -78,7 +81,102 @@ const PARAM_TYPES = {
     'sysID': 'SYS_INT',
 };
 
+/**
+ * Converts JSON format param type to C++ param type
+ * @param {string} param
+ */
+function toCPPParamType(param) {
+    return `InstrParamType::${PARAM_TYPES[param]}`;
+}
+
+/**
+ * Converts JSON format type to UVM type
+ * @param {string} type
+ */
+function toUVMType(type) {
+    return UVM_TYPES[type];
+}
+
+/**
+ *
+ * @param {number} count Amount of tabs
+ */
+function tab(count) {
+    let buff = '';
+    for (let i = 0; i < count; i++) {
+        buff += TAB;
+    }
+    return buff;
+}
+
+/**
+ *
+ * @param {*} data JSON data from file
+ */
 function generateHeaderFile(data) {
+    // Create new output buffer and insert .hpp header
+    let buffer = `${HEADER}\n`;
+
+    // Generate instruction name lookup table
+    buffer += 'constexpr std::map<const char*, uint8_t> INSTR_NAMES {\n';
+    data.instructions.forEach((instr, i) => {
+        buffer += `${tab(1)}{"${instr.name}", ${i}},\n`;
+    });
+    // Closing brace of 'constexpr std::map<const char*, uint8_t> INSTR_NAMES {'
+    buffer += '}\n\n';
+
+    // Generate instruction encoding resolution
+    buffer += 'constexpr std::array<std::vector<InstrParamList>> INSTR_ASM_DEFS {\n'
+    data.instructions.forEach((instr, i) => {
+        buffer += `${tab(1)}{\n`;
+
+        // Instruction paramlist array
+        instr.paramList.forEach((paramList) => {
+            buffer += `${tab(2)}InstrParamList{\n`;
+            // Instruction param list content
+            buffer += `${tab(3)}${paramList.opcode},\n`;
+
+            if (paramList.encodeType && paramList.typeVariants.length > 0) {
+                buffer += `${tab(3)}INSTR_FLAG_ENCODE_TYPE | INSTR_FLAG_TYPE_VARIANTS,\n`;
+            } else if (paramList.encodeType) {
+                buffer += `${tab(3)}INSTR_FLAG_ENCODE_TYPE,\n`;
+            } else if (paramList.typeVariants.length > 0) {
+                buffer += `${tab(3)}INSTR_FLAG_TYPE_VARIANTS,\n`;
+            } else {
+                buffer += `${tab(3)}0,\n`;
+            }
+
+            // Instruction params
+            buffer += `${tab(3)}{\n`;
+            paramList.params.forEach((param, i) => {
+                if (i === 0) {
+                    buffer += tab(4);
+                }
+                buffer += `${toCPPParamType(param)}, `;
+                if (i + 1 === paramList.params.length) {
+                    buffer += '\n';
+                }
+            });
+            buffer += `${tab(3)}},\n`;
+
+            // Instruction type variants
+            buffer += `${tab(3)}{\n`;
+            paramList.typeVariants.forEach((variant) => {
+                buffer += `${tab(4)}{${toUVMType(variant.type)}, ${variant.opcode}},\n`;
+            });
+            buffer += `${tab(3)}},\n`;
+
+            buffer += `${tab(2)}},\n`;
+        });
+        buffer += `${tab(1)}},\n`;
+    });
+    // Closing brace of 'constexpr std::array<InstrParamList> INSTR_ASM_DEFS {\n'
+    buffer += '}\n\n';
+
+    return buffer;
+}
+
+function OLD_generateHeaderFile(data) {
     // File output buffer
     let buffer = `${HEADER}\n`;
     let instrNameDefBuffer = 'const static std::vector<InstrNameDef> INSTR_NAMES = {\n';
@@ -162,7 +260,9 @@ function generateHeaderFile(data) {
 }
 
 (async function main() {
-    const data = await readJson('./src/asm/encodingData.json');
+    const data = await readJson(`${DIRNAME}${IN_FILE_NAME}`);
     const content = generateHeaderFile(data);
-    await Deno.writeTextFile(`./src/asm/encoding.hpp`, content);
+    const CONTENT_OLD = OLD_generateHeaderFile(data);
+    await Deno.writeTextFile(`${DIRNAME}${OUT_FILE_NAME}`, content);
+    await Deno.writeTextFile(`${DIRNAME}${OUT_OLD_FILE_NAME}`, CONTENT_OLD);
 }())
