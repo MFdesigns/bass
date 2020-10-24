@@ -26,7 +26,7 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
-    // Build data structure used to type check instruction paramters
+    // Build data structure used to type check instruction parameters
     std::vector<InstrDefNode> instrDefs;
     buildInstrDefTree(instrDefs);
 
