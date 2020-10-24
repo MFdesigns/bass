@@ -14,9 +14,11 @@
  * limitations under the License.
  */
 
+#include "asm/asm.hpp"
 #include "assembler.hpp"
 #include <cstdint>
 #include <iostream>
+#include <vector>
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
@@ -24,6 +26,11 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
+    // Build data structure used to type check instruction paramters
+    std::vector<InstrDefNode> instrDefs;
+    buildInstrDefTree(instrDefs);
+
+    // Create new assembler
     Assembler asmler{};
 
     bool fileReadSucc = asmler.readSource(argv[1]);

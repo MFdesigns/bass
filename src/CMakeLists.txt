@@ -7,7 +7,7 @@ add_executable(bass
     parser.cpp parser.hpp
     generator.cpp generator.hpp
     fileBuffer.cpp fileBuffer.hpp
-    asm/asm.hpp
+    asm/asm.cpp asm/asm.hpp
     asm/encoding.hpp
     asm/encodingNew.hpp
 )
