@@ -25,7 +25,8 @@ enum class ParseState { GLOBAL_SCOPE, FUNC_BODY, INSTR_BODY, END };
 
 class Parser {
   public:
-    Parser(Source* src,
+    Parser(std::vector<InstrDefNode>* instrDefs,
+           Source* src,
            std::vector<Token>* tokens,
            Global* global,
            std::vector<FuncDefLookup>* funcDefs);
@@ -35,6 +36,8 @@ class Parser {
   private:
     uint64_t Cursor = 0;
 
+    /** Non owning pointer to instruction definitons */
+    std::vector<InstrDefNode>* InstrDefs = nullptr;
     /** Non owning vector of token */
     std::vector<Token>* Tokens = nullptr;
     /** Vector of non owning pointers to function declarations */

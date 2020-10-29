@@ -91,9 +91,14 @@ class Instruction : public ASTNode {
     Instruction(uint32_t pos,
                 uint32_t lineNr,
                 uint32_t lineCol,
-                std::string name);
+                std::string name,
+                uint32_t asmDefIndex);
     std::string Name;
     std::vector<ASTNode*> Params;
+    uint32_t ASMDefIndex = 0;
+    uint8_t Opcode = 0;
+    uint8_t EncodingFlags = 0;
+    // TODO: This should not be needed by the generator
     InstrParamList* ParamList = nullptr;
 };
 

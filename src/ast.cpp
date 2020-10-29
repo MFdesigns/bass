@@ -45,8 +45,10 @@ Identifier::Identifier(uint32_t pos,
 Instruction::Instruction(uint32_t pos,
                          uint32_t lineNr,
                          uint32_t lineCol,
-                         std::string name)
-    : ASTNode(ASTType::INSTRUCTION, pos, lineNr, lineCol), Name(name) {}
+                         std::string name,
+                         uint32_t asmDefIndex)
+    : ASTNode(ASTType::INSTRUCTION, pos, lineNr, lineCol), Name(name),
+      ASMDefIndex(asmDefIndex) {}
 
 FloatNumber::FloatNumber(uint32_t pos,
                          uint32_t lineNr,

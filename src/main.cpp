@@ -31,7 +31,7 @@ int main(int argc, char* argv[]) {
     buildInstrDefTree(instrDefs);
 
     // Create new assembler
-    Assembler asmler{};
+    Assembler asmler{&instrDefs};
 
     bool fileReadSucc = asmler.readSource(argv[1]);
     if (!fileReadSucc) {

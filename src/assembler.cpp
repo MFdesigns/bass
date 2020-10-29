@@ -20,7 +20,11 @@
 #include <fstream>
 #include <iostream>
 
-Assembler::Assembler() {}
+/**
+ * Constructs a new Assembler
+ * @param instrDefs Vector of instruction definitons
+ */
+Assembler::Assembler(std::vector<InstrDefNode>* instrDefs): InstrDefs(instrDefs) {}
 
 Assembler::~Assembler() {
     delete Src;
@@ -69,7 +73,7 @@ bool Assembler::assemble() {
     Global glob{0, 0, 0};
     std::vector<FuncDefLookup> funcDefs{};
 
-    Parser parse{Src, &Tokens, &glob, &funcDefs};
+    Parser parse{InstrDefs, Src, &Tokens, &glob, &funcDefs};
     bool astSucc = parse.buildAST();
     if (!astSucc) {
         return false;

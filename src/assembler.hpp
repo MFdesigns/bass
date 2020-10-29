@@ -25,12 +25,14 @@
 
 class Assembler {
   public:
-    Assembler();
+    Assembler(std::vector<InstrDefNode>* instrDefs);
     ~Assembler();
     bool readSource(char* pathName);
     bool assemble();
 
   private:
+    /** Non owning pointer to instuction definitons */
+    std::vector<InstrDefNode>* InstrDefs = nullptr;
     Source* Src = nullptr;
     Scanner* Scan = nullptr;
     std::vector<Token> Tokens;
