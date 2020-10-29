@@ -53,6 +53,10 @@ bool Assembler::readSource(char* pathName) {
     return true;
 }
 
+/**
+ * Assembles the source file into a UX file
+ * @return On success returns true otherwise false
+ */
 bool Assembler::assemble() {
     // Initialize components
     Scan = new Scanner{Src, &Tokens};
@@ -63,7 +67,9 @@ bool Assembler::assemble() {
     }
 
     Global glob{0, 0, 0};
-    Parser parse{Src, &Tokens, &glob};
+    std::vector<FuncDefLookup> funcDefs{};
+
+    Parser parse{Src, &Tokens, &glob, &funcDefs};
     bool astSucc = parse.buildAST();
     if (!astSucc) {
         return false;

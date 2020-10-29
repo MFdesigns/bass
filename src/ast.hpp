@@ -1,18 +1,18 @@
-/**
- * Copyright 2020 Michel Fäh
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// ======================================================================== //
+// Copyright 2020 Michel Fäh
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// ======================================================================== //
 
 #pragma once
 #include "asm/asm.hpp"
@@ -142,4 +142,18 @@ class TypeInfo : public ASTNode {
   public:
     TypeInfo(uint32_t pos, uint32_t lineNr, uint32_t lineCol, uint8_t dataType);
     uint8_t DataType;
+};
+
+/**
+ * This is used by the parser to check if a function reference is resolved. In
+ * the generator stage this is used to fill out the placeholder addresses of
+ * function references with the VAddr member. The VAddr member will be filled
+ * out by the generator once it loops through the AST and generates the
+ * instructions.
+ */
+struct FuncDefLookup {
+    /** Non owning pointer to the function definition node */
+    FuncDef* Def = nullptr;
+    /** Used by the generator to lookup function references */
+    uint64_t VAddr = 0;
 };

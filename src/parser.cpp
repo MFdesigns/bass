@@ -1,18 +1,18 @@
-/**
- * Copyright 2020 Michel Fäh
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// ======================================================================== //
+// Copyright 2020 Michel Fäh
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// ======================================================================== //
 
 #include "parser.hpp"
 #include "asm/asm.hpp"
@@ -20,8 +20,18 @@
 #include <iomanip>
 #include <iostream>
 
-Parser::Parser(Source* src, std::vector<Token>* tokens, Global* global)
-    : Src(src), Tokens(tokens), Glob(global){};
+/**
+ * Constructs a new Parser
+ * @param src Pointer to the source file
+ * @param tokens Pointer to the token array
+ * @param global [out] Pointer to the Global AST node
+ * @param funcDefs [out] Pointer to the FuncDefLookup
+ */
+Parser::Parser(Source* src,
+               std::vector<Token>* tokens,
+               Global* global,
+               std::vector<FuncDefLookup>* funcDefs)
+    : Src(src), Tokens(tokens), Glob(global), FuncDefs(funcDefs){};
 
 uint8_t Parser::getUVMType(Token* tok) {
     std::string typeName;
@@ -403,7 +413,8 @@ bool Parser::buildAST() {
 }
 
 bool Parser::typeCheckInstrParams(Instruction* instr,
-                                  std::vector<Identifier*>& labelRefs) {
+                                  std::vector<Identifier*>& labelRefs,
+                                  std::vector<Identifier*>& funcRefs) {
     // TODO: Move this to the scanner phase
     uint8_t instrID = 0;
     bool foundInstr = false;
@@ -469,7 +480,7 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
                         break;
                     }
                     Identifier* funcId = dynamic_cast<Identifier*>(node);
-                    FuncRefs.push_back(funcId);
+                    funcRefs.push_back(funcId);
                 } break;
                 case InstrParamType::LABEL_ID: {
                     if (node->Type != ASTType::IDENTIFIER) {
@@ -558,68 +569,132 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
     return true;
 }
 
+/**
+ * Performs a complete type checking pass over the AST
+ * @return Returns true if no errors occured otherwise false
+ */
 bool Parser::typeCheck() {
-    // TODO: Duplicate entries
+    // Check if Global AST node has no children which means the main function is
+    // missing for sure
+    if (Glob->Body.size() == 0) {
+        std::cout << "[Type Checker] Missing main function\n";
+        return false;
+    }
+
+    // Try to find main function
+    FuncDef* mainFunc = nullptr;
+    for (uint32_t i = 0; i < Glob->Body.size(); i++) {
+        ASTNode* node = Glob->Body[i];
+        if (node->Type == ASTType::FUNCTION_DEFINTION) {
+            FuncDef* func = dynamic_cast<FuncDef*>(node);
+            if (func->Name == "main") {
+                mainFunc = func;
+            }
+        }
+    }
+
+    // Check if main function was found
+    if (mainFunc == nullptr) {
+        std::cout << "[Type Checker] Missing main function\n";
+        return false;
+    }
+
+    // This is used to keep track of the localy referenced function and label
+    // identifiers aswell as localy defined label definitions
     std::vector<LabelDef*> scopeLabelDefs;
     std::vector<Identifier*> scopeLabelRefs;
-    // Check all instruction parameters
-    bool valid = true;
-    for (auto& globElem : Glob->Body) {
-        scopeLabelDefs.clear(); // Empty label defs from previous scope
-        scopeLabelRefs.clear();
+    std::vector<Identifier*> scopeFuncRefs;
+
+    // Tracks if an error occured while type checking
+    bool typeCheckError = false;
+    // Type check complete AST. This assumes that the build AST generated a
+    // valid AST
+    for (const auto& globElem : Glob->Body) {
+        // This assumes that all global nodes are function definitions. This
+        // might change with future features
         FuncDef* func = dynamic_cast<FuncDef*>(globElem);
-        FuncDefs.push_back(func);
-        for (auto& funcElem : func->Body) {
+
+        // Check if function definition is redifined
+        bool funcRedef = false;
+        for (uint32_t i = 0; i < FuncDefs->size(); i++) {
+            if ((*FuncDefs)[i].Def->Name == func->Name) {
+                funcRedef = true;
+                break;
+            }
+        }
+
+        // If function is a redefinition continue with parsing the function body
+        // anyway
+        if (funcRedef) {
+            typeCheckError = true;
+            std::cout << "[Type Checker] Error: function is already defined\n";
+        }
+        FuncDefs->push_back(FuncDefLookup{func, 0});
+
+        // Clear all scoped definitions and references
+        scopeLabelDefs.clear();
+
+        // Check if function body is empty, display a warning and continue to
+        // parse next function
+        if (func->Body.size() == 0) {
+            typeCheckError = true;
+            std::cout << "[Type Checker] Warning: empty function body\n";
+            continue;
+        }
+
+        // Type check every function element. Again this assumes that the
+        // generated AST is valid
+        for (const auto& funcElem : func->Body) {
             if (funcElem->Type == ASTType::INSTRUCTION) {
                 Instruction* instr = dynamic_cast<Instruction*>(funcElem);
-                bool validParams = typeCheckInstrParams(instr, scopeLabelRefs);
-                if (!validParams) {
-                    valid = false;
+                if (!typeCheckInstrParams(instr, scopeLabelRefs,
+                                          scopeFuncRefs)) {
+                    typeCheckError = true;
+                    continue;
                 }
             } else if (funcElem->Type == ASTType::LABEL_DEFINITION) {
-                LabelDef* labelDef = dynamic_cast<LabelDef*>(funcElem);
-                scopeLabelDefs.push_back(labelDef);
-            }
-        }
+                LabelDef* label = dynamic_cast<LabelDef*>(funcElem);
 
-        // Check if all label references in the current function scope are
-        // resolved
-        for (auto& ref : scopeLabelRefs) {
-            bool found = false;
-            auto i = 0;
-            while (!found && i < scopeLabelDefs.size()) {
-                if (ref->Name == scopeLabelDefs[i]->Name) {
-                    found = true;
+                // Check if label definiton was already defined in the local
+                // scope
+                bool labelRedef = false;
+                for (uint32_t i = 0; i < scopeLabelDefs.size(); i++) {
+                    if (scopeLabelDefs[i]->Name == label->Name) {
+                        labelRedef = true;
+                        break;
+                    }
                 }
-                i++;
-            }
-            if (!found) {
-                std::cout
-                    << "Error unresolved label identifier referenced at Ln "
-                    << ref->LineNumber << " Col " << ref->LineColumn << '\n';
-                valid = false;
+
+                if (labelRedef) {
+                    typeCheckError = true;
+                    std::cout << "[Type Checker] Error: label is already "
+                                 "defined in this scope\n";
+                    continue;
+                }
+
+                // If label is not a redefinition add it to the localy defined
+                // labels
+                scopeLabelDefs.push_back(label);
             }
         }
     }
 
-    // TODO: Check for duplicate entries
     // Check if all function references are resolved
-    for (auto& ref : FuncRefs) {
-        bool found = false;
-        auto i = 0;
-        while (!found && i < FuncDefs.size()) {
-            if (ref->Name == FuncDefs[i]->Name) {
-                found = true;
+    for (const auto& funcRef : scopeFuncRefs) {
+        bool foundDef = false;
+        for (uint32_t i = 0; i < FuncDefs->size(); i++) {
+            if (funcRef->Name == (*FuncDefs)[i].Def->Name) {
+                foundDef = true;
+                break;
             }
-            i++;
         }
-        if (!found) {
-            std::cout
-                << "Error unresolved function identifier referenced at Ln "
-                << ref->LineNumber << " Col " << ref->LineColumn << '\n';
-            valid = false;
+
+        if (!foundDef) {
+            std::cout << "[Type Checker] Error: unresolved function '"
+                      << funcRef->Name << "'\n";
+            typeCheckError = true;
         }
     }
 
-    return valid;
+    return !typeCheckError;
 }
