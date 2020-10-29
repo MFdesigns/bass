@@ -80,7 +80,7 @@ bool Assembler::assemble() {
         return false;
     }
 
-    Generator gen{&glob, &File};
+    Generator gen{&glob, &File, &funcDefs};
     gen.genBinary();
 
     return true;

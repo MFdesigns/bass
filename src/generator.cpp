@@ -1,18 +1,18 @@
-/**
- * Copyright 2020 Michel Fäh
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// ======================================================================== //
+// Copyright 2020 Michel Fäh
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// ======================================================================== //
 
 #include "generator.hpp"
 #include <array>
@@ -22,8 +22,16 @@
 SecNameString::SecNameString(std::string str, vAddr addr)
     : Str(str), Addr(addr) {}
 
-Generator::Generator(Global* ast, std::filesystem::path* p)
-    : AST(ast), FilePath(p) {
+/**
+ * Constructs a new Generator
+ * @param ast Pointer to AST
+ * @param p Pointer to output file path
+ * @param funcDefs Pointer to array of FuncDefLookup
+ */
+Generator::Generator(Global* ast,
+                     std::filesystem::path* p,
+                     std::vector<FuncDefLookup>* funcDefs)
+    : AST(ast), FilePath(p), FuncDefs(funcDefs) {
     Buffer = new FileBuffer();
     // Setup section name strings
     SecNameStrings.reserve(2);
@@ -199,14 +207,35 @@ void Generator::emitInstruction(Instruction* instr) {
     Cursor += instrSize;
 }
 
+/**
+ * Generates bytecode and appends it to file buffer
+ */
 void Generator::createByteCode() {
+    // Set the current Cursor as start of code section
     SecCode->StartAddr = Cursor;
     for (auto& globElem : AST->Body) {
         FuncDef* func = dynamic_cast<FuncDef*>(globElem);
+
+        // Find function definiton in lookup table
+        FuncDefLookup* lookup = nullptr;
+        for (uint32_t i = 0; i < FuncDefs->size(); i++) {
+            if ((*FuncDefs)[i].Def->Name == func->Name) {
+                lookup = &(*FuncDefs)[i];
+                break;
+            }
+        }
+
+        // Add function definition address to lookup table. This will be used to
+        // fill in the placeholders addresses of function calls. This assumes
+        // that the function def exists in the lookup table
+        lookup->VAddr = Cursor;
+
+        // If current function is the main function set start address to this
         if (func->Name == "main") {
             StartAddr = Cursor;
         }
 
+        // Generate function body
         for (auto& funcElem : func->Body) {
             if (funcElem->Type == ASTType::INSTRUCTION) {
                 Instruction* instr = dynamic_cast<Instruction*>(funcElem);
@@ -216,6 +245,8 @@ void Generator::createByteCode() {
             }
         }
     }
+
+    // Set code section size
     SecCode->Size = Cursor - SecCode->StartAddr;
 }
 
@@ -240,6 +271,9 @@ void Generator::fillSectionTable() {
     }
 }
 
+/**
+ * Generates the output UX file and writes it to disk
+ */
 void Generator::genBinary() {
     createHeader();
     createSectionTable();

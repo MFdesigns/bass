@@ -1,18 +1,18 @@
-/**
- * Copyright 2020 Michel Fäh
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// ======================================================================== //
+// Copyright 2020 Michel Fäh
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// ======================================================================== //
 
 #pragma once
 #include "ast.hpp"
@@ -34,7 +34,21 @@ constexpr uint8_t SEC_PERM_EXECUTE = 0b0010'0000;
 constexpr uint32_t HEADER_SIZE = 0x60;
 constexpr uint32_t SEC_TABLE_ENTRY_SIZE = 0x1A;
 
+// TODO: Remove?
 typedef unsigned long long vAddr;
+
+/**
+ * This is used to track which function definitons have been refered to by
+ * bytecode. When the bytecode is beeing generated function pointers will be
+ * filled with placeholders (null pointers) and are resolved once the location
+ * of every function is known by the generator.
+ */
+struct ResolvableFuncRef {
+    /** Virtual address to placeholder address */
+    uint64_t VAddr = 0;
+    /** Non owning pointer to FuncDefLookup which this FuncRef resolves to */
+    FuncDefLookup* FuncDef = nullptr;
+};
 
 struct SecNameString {
     SecNameString(std::string str, vAddr addr);
@@ -52,13 +66,21 @@ struct Section {
 
 class Generator {
   public:
-    Generator(Global* ast, std::filesystem::path* p);
+    Generator(Global* ast,
+              std::filesystem::path* p,
+              std::vector<FuncDefLookup>* funcDefs);
     ~Generator();
     void genBinary();
 
   private:
-    Global* AST = nullptr;           // Non owning pointer
-    std::filesystem::path* FilePath; // Non owning pointer
+    /** Non owning pointer to Global */
+    Global* AST = nullptr;
+    /** Non owning pointer to source file */
+    std::filesystem::path* FilePath = nullptr;
+    /** Non owning pointer to function defintions created by parser stage */
+    std::vector<FuncDefLookup>* FuncDefs = nullptr;
+    /** Vector of function references which have to be resolved */
+    std::vector<ResolvableFuncRef> ResFuncRefs;
     FileBuffer* Buffer = nullptr;
     Section* SecNameTable = nullptr;
     Section* SecCode = nullptr;
