@@ -199,7 +199,7 @@ void Generator::emitInstruction(Instruction* instr) {
         } break;
         case ASTType::TYPE_INFO: {
             TypeInfo* typeInfo = dynamic_cast<TypeInfo*>(param);
-            if (instr->ParamList->Flags & INSTR_FLAG_ENCODE_TYPE) {
+            if (instr->EncodingFlags & INSTR_FLAG_ENCODE_TYPE) {
                 temp[instrSize] = typeInfo->DataType;
                 instrSize++;
             }

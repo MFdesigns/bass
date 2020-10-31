@@ -16,7 +16,7 @@
 
 #include "parser.hpp"
 #include "asm/asm.hpp"
-#include "asm/encodingNew.hpp"
+#include "asm/encoding.hpp"
 #include <iomanip>
 #include <iostream>
 
@@ -395,8 +395,6 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
             // Attach opcode and return
             instr->Opcode = paramNode->ParamList->Opcode;
             instr->EncodingFlags = paramNode->ParamList->Flags;
-            // TODO: Remove legacy code
-            instr->ParamList = paramNode->ParamList;
             return true;
         } else {
             std::cout
@@ -447,8 +445,6 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
                 type = typeInfo;
                 nextNode = &currentNode->Children[n];
             } break;
-            // TODO: Remove legacy code
-            case InstrParamType::FUNC_ID:
             case InstrParamType::LABEL_ID: {
                 if (astNode->Type != ASTType::IDENTIFIER) {
                     break;
@@ -462,7 +458,7 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
                     break;
                 }
                 RegisterId* regId = dynamic_cast<RegisterId*>(astNode);
-                // TODO: What about flag register ?
+                // s: What about flag register ?
                 if (regId->Id < 0x1 && regId->Id > 0x15) {
                     std::cout
                         << "[Type Checker] Error: Expected integer register\n";
@@ -553,9 +549,6 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
     }
     // Attach encoding information
     instr->EncodingFlags = paramList->Flags;
-
-    // TODO: Remove legacy code
-    instr->ParamList = paramList;
 
     return true;
 }

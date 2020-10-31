@@ -387,7 +387,7 @@
                     "opcode": "0x20",
                     "encodeType": false,
                     "params": [
-                        "function"
+                        "label"
                     ],
                     "typeVariants": []
                 }
