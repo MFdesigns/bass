@@ -47,6 +47,15 @@ constexpr uint8_t RO_LAYOUT_IR = 0x4F;        // <iR>
 constexpr uint8_t RO_LAYOUT_IR_INT = 0x2F;    // <iR> + <i32>
 constexpr uint8_t RO_LAYOUT_IR_IR_INT = 0x1F; // <iR> + <iR> * <i16>
 
+/**
+ * This is used to tell the generator what the identifier referes to
+ */
+enum class IdentifierType {
+    NONE = 0,
+    FUNC_REF,
+    LABEL_REF,
+};
+
 class ASTNode {
   public:
     ASTNode(ASTType type);
@@ -84,6 +93,7 @@ class Identifier : public ASTNode {
                uint32_t lineCol,
                std::string name);
     std::string Name;
+    IdentifierType IdType = IdentifierType::NONE;
 };
 
 class Instruction : public ASTNode {

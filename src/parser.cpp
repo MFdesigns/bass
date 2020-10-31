@@ -494,14 +494,16 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
                     break;
                 }
                 Identifier* funcRef = dynamic_cast<Identifier*>(astNode);
+                funcRef->IdType = IdentifierType::FUNC_REF;
                 funcRefs.push_back(funcRef);
                 nextNode = &currentNode->Children[n];
-            }
+            } break;
             case InstrParamType::LABEL_ID: {
                 if (astNode->Type != ASTType::IDENTIFIER) {
                     break;
                 }
                 Identifier* labelRef = dynamic_cast<Identifier*>(astNode);
+                labelRef->IdType = IdentifierType::LABEL_REF;
                 labelRefs.push_back(labelRef);
                 nextNode = &currentNode->Children[n];
             } break;
