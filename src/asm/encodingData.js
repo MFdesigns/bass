@@ -23,13 +23,8 @@ import { readJson } from "https://deno.land/std/fs/mod.ts";
 
 const DIRNAME = './src/asm/';
 const IN_FILE_NAME = 'encodingData.json';
-const OUT_FILE_NAME = 'encodingNew.hpp';
-const OUT_OLD_FILE_NAME = 'encoding.hpp';
+const OUT_FILE_NAME = 'encoding.hpp';
 const TAB = '    ';
-// TODO: Remove once old generator is replaced
-const TAB2 = `${TAB}${TAB}`;
-const TAB3 = `${TAB}${TAB}${TAB}`;
-const TAB4 = `${TAB}${TAB}${TAB}${TAB}`;
 
 const HEADER =
     `/**
@@ -181,93 +176,8 @@ function generateHeaderFile(data) {
     return buffer;
 }
 
-function OLD_generateHeaderFile(data) {
-    // File output buffer
-    let buffer = `${HEADER}\n`;
-    let instrNameDefBuffer = 'const static std::vector<InstrNameDef> INSTR_NAMES = {\n';
-    // Buffer for instructions map
-    let instrBuffer = `const static std::map<uint8_t, std::vector<InstrParamList>> INSTR_ASM_DEFS = {\n`;
-    // Buffer for instruction enum
-    let instrEnumBuffer = '';
-
-    data.instructions.forEach((instr, i) => {
-        const instrEnum = instr.name.toUpperCase();
-
-        // Add instruction to enum
-        instrEnumBuffer += `constexpr uint8_t INSTR_${instrEnum} = ${i};\n`;
-        instrNameDefBuffer += `${TAB}InstrNameDef{"${instr.name}", INSTR_${instrEnum}},\n`;
-
-        instrBuffer += `${TAB}{INSTR_${instrEnum}, `;
-
-        // Add InstrParamList objects
-        instrBuffer += '{\n';
-        instr.paramList.forEach((param) => {
-            instrBuffer += `${TAB2}InstrParamList{\n${TAB3}${param.opcode},\n`;
-
-            let flagsTmp = '';
-            // Add flags
-            if (param.encodeType) {
-                flagsTmp += 'INSTR_FLAG_ENCODE_TYPE';
-            } else if (param.typeVariants.length > 0) {
-                flagsTmp += 'INSTR_FLAG_TYPE_VARIANTS';
-            }
-
-            if (flagsTmp.length === 0) {
-                flagsTmp = '0';
-            }
-            instrBuffer += `${TAB3}${flagsTmp},\n`;
-
-            // Paramters
-            instrBuffer += `${TAB3}{`;
-            param.params.forEach((paramEntry, i) => {
-                instrBuffer += `InstrParamType::${PARAM_TYPES[paramEntry]}`;
-                if (i + 1 < param.params.length) {
-                    instrBuffer += ', ';
-                }
-            });
-            instrBuffer += '},\n'
-
-            // Type variants
-            instrBuffer += `${TAB3}{`;
-            if (param.typeVariants.length > 0) {
-                instrBuffer += '\n';
-            }
-
-            param.typeVariants.forEach((typeVar, i) => {
-                instrBuffer += `${TAB4}{${UVM_TYPES[typeVar.type]}, ${typeVar.opcode}}`;
-                if (i + 1 < param.typeVariants.length) {
-                    instrBuffer += ',\n';
-                }
-            });
-
-            if (param.typeVariants.length > 0) {
-                instrBuffer += `\n${TAB3}}`;
-            } else {
-                instrBuffer += '}';
-            }
-
-            instrBuffer += `\n${TAB2}},\n`;
-        });
-        instrBuffer += `${TAB}${TAB}}\n`;
-
-        instrBuffer += `${TAB}}`;
-        if (i + 1 < data.instructions.length) {
-            instrBuffer += `,\n`;
-        }
-    });
-
-    instrNameDefBuffer += '};\n';
-    instrBuffer += '\n};'
-
-    buffer += `${instrEnumBuffer}\n${instrNameDefBuffer}\n${instrBuffer}\n`;
-
-    return buffer;
-}
-
 (async function main() {
     const data = await readJson(`${DIRNAME}${IN_FILE_NAME}`);
     const content = generateHeaderFile(data);
-    const CONTENT_OLD = OLD_generateHeaderFile(data);
     await Deno.writeTextFile(`${DIRNAME}${OUT_FILE_NAME}`, content);
-    await Deno.writeTextFile(`${DIRNAME}${OUT_OLD_FILE_NAME}`, CONTENT_OLD);
 }())

@@ -17,7 +17,6 @@
 #include "scanner.hpp"
 #include "asm/asm.hpp"
 #include "asm/encoding.hpp"
-#include "asm/encodingNew.hpp"
 #include <iomanip>
 #include <iostream>
 
