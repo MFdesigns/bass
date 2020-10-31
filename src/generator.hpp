@@ -89,9 +89,11 @@ class Generator {
     vAddr StartAddr = 0;
     void createHeader();
     void createSectionTable();
+    void addResolvableFuncRef(Identifier* funcRef, uint64_t vAddr);
     void emitRegisterOffset(RegisterOffset* regOff, uint8_t* tempBuff);
     void emitInstruction(Instruction* instr);
     void createByteCode();
+    void resolveReferences();
     void fillSectionTable();
     void writeFile();
 };

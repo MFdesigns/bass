@@ -115,42 +115,52 @@ void Generator::emitRegisterOffset(RegisterOffset* regOff, uint8_t* out) {
     }
 }
 
+/**
+ * Adds a function reference which has to be resolved
+ * @param funcRef Non owning pointer to function reference
+ * @param vAddr Address to placeholder in output file
+ */
+void Generator::addResolvableFuncRef(Identifier* funcRef, uint64_t vAddr) {
+    // Find function definiton which this reference referes to
+    FuncDefLookup* funcDef = nullptr;
+    for (uint32_t i = 0; i < FuncDefs->size(); i++) {
+        FuncDefLookup* lookup = &(*FuncDefs)[i];
+        if (lookup->Def->Name == funcRef->Name) {
+            funcDef = lookup;
+            break;
+        }
+    }
+
+    // TODO: What if funcDef is not found?
+    ResFuncRefs.push_back(ResolvableFuncRef{vAddr, funcDef});
+}
+
+/**
+ * Emits a given instruction
+ * @param instr Instruction to emit
+ */
 void Generator::emitInstruction(Instruction* instr) {
     constexpr uint32_t MAX_INSTR_SIZE = 15;
     // Temporary instruction mem
     uint8_t temp[MAX_INSTR_SIZE] = {0};
     uint32_t instrSize = 0;
-    // Get opcode
-    uint8_t op = instr->ParamList->Opcode;
-    if (instr->ParamList->Flags & INSTR_FLAG_TYPE_VARIANTS) {
-        // Get type
-        // TODO: This assumes that the first param is a type info but this
-        // should be a specific member of the Instruction class
-        TypeInfo* typeInfo = dynamic_cast<TypeInfo*>(instr->Params[0]);
-        // Find coresponding type variant
-        bool found = false;
-        TypeVariant* variant = nullptr;
-        uint32_t i = 0;
-        while (!found && i < instr->ParamList->OpcodeVariants.size()) {
-            variant = &instr->ParamList->OpcodeVariants[i];
-            if (variant->Type == typeInfo->DataType) {
-                found = true;
-            }
-            i++;
-        }
-        op = variant->Opcode;
-    }
-    temp[0] = op;
+
+    // Set opcode
+    temp[0] = instr->Opcode;
     instrSize++;
 
-    // Emits paramters
+    // Emits parameters
     for (auto& param : instr->Params) {
         switch (param->Type) {
-        // TODO: Generator does not know if the id is func or label refs without
-        // looking at paramlist
-        case ASTType::IDENTIFIER:
+        case ASTType::IDENTIFIER: {
+            Identifier* id = dynamic_cast<Identifier*>(param);
+            if (id->IdType == IdentifierType::FUNC_REF) {
+                addResolvableFuncRef(id, Cursor + instrSize);
+            } else if (id->IdType == IdentifierType::LABEL_REF) {
+                // TODO: Add Resolvable label reference
+            }
             instrSize += 8;
-            break;
+        } break;
         case ASTType::FLOAT_NUMBER: {
             FloatNumber* num = dynamic_cast<FloatNumber*>(param);
             if (num->DataType == UVM_TYPE_F32) {
@@ -250,6 +260,19 @@ void Generator::createByteCode() {
     SecCode->Size = Cursor - SecCode->StartAddr;
 }
 
+/**
+ * Resolves all function and label references and fills in the placeholder
+ * addresses
+ */
+void Generator::resolveReferences() {
+    for (const ResolvableFuncRef& res : ResFuncRefs) {
+        uint64_t funcVAddr = res.FuncDef->VAddr;
+        Buffer->write(res.VAddr, &funcVAddr, sizeof(funcVAddr));
+    }
+
+    // TODO: Resolve label refs
+}
+
 void Generator::fillSectionTable() {
     std::array<Section*, 2> tmpSections = {SecNameTable, SecCode};
     uint8_t tmpCursor = HEADER_SIZE;
@@ -278,6 +301,7 @@ void Generator::genBinary() {
     createHeader();
     createSectionTable();
     createByteCode();
+    resolveReferences();
 
     Buffer->write(0x8, (uint8_t*)&StartAddr, 8);
     fillSectionTable();
