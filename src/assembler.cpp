@@ -24,7 +24,8 @@
  * Constructs a new Assembler
  * @param instrDefs Vector of instruction definitons
  */
-Assembler::Assembler(std::vector<InstrDefNode>* instrDefs): InstrDefs(instrDefs) {}
+Assembler::Assembler(std::vector<InstrDefNode>* instrDefs)
+    : InstrDefs(instrDefs) {}
 
 Assembler::~Assembler() {
     delete Src;
@@ -71,9 +72,9 @@ bool Assembler::assemble() {
     }
 
     Global glob{0, 0, 0};
-    std::vector<FuncDefLookup> funcDefs{};
+    std::vector<LabelDefLookup> labelDefs{};
 
-    Parser parse{InstrDefs, Src, &Tokens, &glob, &funcDefs};
+    Parser parse{InstrDefs, Src, &Tokens, &glob, &labelDefs};
     bool astSucc = parse.buildAST();
     if (!astSucc) {
         return false;
@@ -84,7 +85,7 @@ bool Assembler::assemble() {
         return false;
     }
 
-    Generator gen{&glob, &File, &funcDefs};
+    Generator gen{&glob, &File, &labelDefs};
     gen.genBinary();
 
     return true;

@@ -30,8 +30,8 @@ SecNameString::SecNameString(std::string str, vAddr addr)
  */
 Generator::Generator(Global* ast,
                      std::filesystem::path* p,
-                     std::vector<FuncDefLookup>* funcDefs)
-    : AST(ast), FilePath(p), FuncDefs(funcDefs) {
+                     std::vector<LabelDefLookup>* funcDefs)
+    : AST(ast), FilePath(p), LabelDefs(funcDefs) {
     Buffer = new FileBuffer();
     // Setup section name strings
     SecNameStrings.reserve(2);
@@ -116,23 +116,23 @@ void Generator::emitRegisterOffset(RegisterOffset* regOff, uint8_t* out) {
 }
 
 /**
- * Adds a function reference which has to be resolved
+ * Adds a label reference which has to be resolved
  * @param funcRef Non owning pointer to function reference
  * @param vAddr Address to placeholder in output file
  */
-void Generator::addResolvableFuncRef(Identifier* funcRef, uint64_t vAddr) {
+void Generator::addResolvableFuncRef(Identifier* labelRef, uint64_t vAddr) {
     // Find function definiton which this reference referes to
-    FuncDefLookup* funcDef = nullptr;
-    for (uint32_t i = 0; i < FuncDefs->size(); i++) {
-        FuncDefLookup* lookup = &(*FuncDefs)[i];
-        if (lookup->Def->Name == funcRef->Name) {
-            funcDef = lookup;
+    LabelDefLookup* labelDef = nullptr;
+    for (uint32_t i = 0; i < LabelDefs->size(); i++) {
+        LabelDefLookup* lookup = &(*LabelDefs)[i];
+        if (lookup->Def->Name == labelRef->Name) {
+            labelDef = lookup;
             break;
         }
     }
 
-    // TODO: What if funcDef is not found?
-    ResFuncRefs.push_back(ResolvableFuncRef{vAddr, funcDef});
+    // TODO: What if labelDef is not found?
+    ResLabelRefs.push_back(ResolvableLabelRef{vAddr, labelDef});
 }
 
 /**
@@ -154,11 +154,7 @@ void Generator::emitInstruction(Instruction* instr) {
         switch (param->Type) {
         case ASTType::IDENTIFIER: {
             Identifier* id = dynamic_cast<Identifier*>(param);
-            if (id->IdType == IdentifierType::FUNC_REF) {
-                addResolvableFuncRef(id, Cursor + instrSize);
-            } else if (id->IdType == IdentifierType::LABEL_REF) {
-                // TODO: Add Resolvable label reference
-            }
+            addResolvableFuncRef(id, Cursor + instrSize);
             instrSize += 8;
         } break;
         case ASTType::FLOAT_NUMBER: {
@@ -224,35 +220,33 @@ void Generator::createByteCode() {
     // Set the current Cursor as start of code section
     SecCode->StartAddr = Cursor;
     for (auto& globElem : AST->Body) {
-        FuncDef* func = dynamic_cast<FuncDef*>(globElem);
+        switch (globElem->Type) {
+        case ASTType::LABEL_DEFINITION: {
+            LabelDef* label = dynamic_cast<LabelDef*>(globElem);
 
-        // Find function definiton in lookup table
-        FuncDefLookup* lookup = nullptr;
-        for (uint32_t i = 0; i < FuncDefs->size(); i++) {
-            if ((*FuncDefs)[i].Def->Name == func->Name) {
-                lookup = &(*FuncDefs)[i];
-                break;
+            // Find label definiton in lookup table
+            LabelDefLookup* lookup = nullptr;
+            for (uint32_t i = 0; i < LabelDefs->size(); i++) {
+                if ((*LabelDefs)[i].Def->Name == label->Name) {
+                    lookup = &(*LabelDefs)[i];
+                    break;
+                }
             }
-        }
 
-        // Add function definition address to lookup table. This will be used to
-        // fill in the placeholders addresses of function calls. This assumes
-        // that the function def exists in the lookup table
-        lookup->VAddr = Cursor;
+            // Add label definition address to lookup table. This will be used
+            // to fill in the placeholders addresses of label calls. This
+            // assumes that the function def exists in the lookup table
+            lookup->VAddr = Cursor;
 
-        // If current function is the main function set start address to this
-        if (func->Name == "main") {
-            StartAddr = Cursor;
-        }
-
-        // Generate function body
-        for (auto& funcElem : func->Body) {
-            if (funcElem->Type == ASTType::INSTRUCTION) {
-                Instruction* instr = dynamic_cast<Instruction*>(funcElem);
-                emitInstruction(instr);
-            } else if (funcElem->Type == ASTType::LABEL_DEFINITION) {
-                // TODO: ...
+            // If current label is the main label set start address to this
+            if (label->Name == "main") {
+                StartAddr = Cursor;
             }
+        } break;
+        case ASTType::INSTRUCTION: {
+            Instruction* instr = dynamic_cast<Instruction*>(globElem);
+            emitInstruction(instr);
+        }
         }
     }
 
@@ -261,16 +255,13 @@ void Generator::createByteCode() {
 }
 
 /**
- * Resolves all function and label references and fills in the placeholder
- * addresses
+ * Resolves all label references and fills in the placeholder addresses
  */
-void Generator::resolveReferences() {
-    for (const ResolvableFuncRef& res : ResFuncRefs) {
-        uint64_t funcVAddr = res.FuncDef->VAddr;
-        Buffer->write(res.VAddr, &funcVAddr, sizeof(funcVAddr));
+void Generator::resolveLabelRefs() {
+    for (const ResolvableLabelRef& res : ResLabelRefs) {
+        uint64_t labelVAddr = res.LabelDef->VAddr;
+        Buffer->write(res.VAddr, &labelVAddr, sizeof(labelVAddr));
     }
-
-    // TODO: Resolve label refs
 }
 
 void Generator::fillSectionTable() {
@@ -301,7 +292,7 @@ void Generator::genBinary() {
     createHeader();
     createSectionTable();
     createByteCode();
-    resolveReferences();
+    resolveLabelRefs();
 
     Buffer->write(0x8, (uint8_t*)&StartAddr, 8);
     fillSectionTable();

@@ -23,7 +23,6 @@
 
 enum class ASTType {
     GLOBAL,
-    FUNCTION_DEFINTION,
     LABEL_DEFINITION,
     IDENTIFIER,
     INSTRUCTION,
@@ -73,13 +72,6 @@ class Global : public ASTNode {
     std::vector<ASTNode*> Body;
 };
 
-class FuncDef : public ASTNode {
-  public:
-    FuncDef(uint32_t pos, uint32_t lineNr, uint32_t lineCol, std::string name);
-    std::string Name;
-    std::vector<ASTNode*> Body;
-};
-
 class LabelDef : public ASTNode {
   public:
     LabelDef(uint32_t pos, uint32_t lineNr, uint32_t lineCol, std::string name);
@@ -93,7 +85,6 @@ class Identifier : public ASTNode {
                uint32_t lineCol,
                std::string name);
     std::string Name;
-    IdentifierType IdType = IdentifierType::NONE;
 };
 
 class Instruction : public ASTNode {
@@ -160,15 +151,15 @@ class TypeInfo : public ASTNode {
 };
 
 /**
- * This is used by the parser to check if a function reference is resolved. In
+ * This is used by the parser to check if a label reference is resolved. In
  * the generator stage this is used to fill out the placeholder addresses of
- * function references with the VAddr member. The VAddr member will be filled
+ * label references with the VAddr member. The VAddr member will be filled
  * out by the generator once it loops through the AST and generates the
  * instructions.
  */
-struct FuncDefLookup {
-    /** Non owning pointer to the function definition node */
-    FuncDef* Def = nullptr;
+struct LabelDefLookup {
+    /** Non owning pointer to the label definition node */
+    LabelDef* Def = nullptr;
     /** Used by the generator to lookup function references */
     uint64_t VAddr = 0;
 };

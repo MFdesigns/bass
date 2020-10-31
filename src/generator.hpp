@@ -38,16 +38,16 @@ constexpr uint32_t SEC_TABLE_ENTRY_SIZE = 0x1A;
 typedef unsigned long long vAddr;
 
 /**
- * This is used to track which function definitons have been refered to by
- * bytecode. When the bytecode is beeing generated function pointers will be
+ * This is used to track which label definitons have been refered to by
+ * bytecode. When the bytecode is beeing generated label pointers will be
  * filled with placeholders (null pointers) and are resolved once the location
- * of every function is known by the generator.
+ * of every label is known by the generator.
  */
-struct ResolvableFuncRef {
+struct ResolvableLabelRef {
     /** Virtual address to placeholder address */
     uint64_t VAddr = 0;
-    /** Non owning pointer to FuncDefLookup which this FuncRef resolves to */
-    FuncDefLookup* FuncDef = nullptr;
+    /** Non owning pointer to LabelDefLookup which this LabelDef resolves to */
+    LabelDefLookup* LabelDef = nullptr;
 };
 
 struct SecNameString {
@@ -68,7 +68,7 @@ class Generator {
   public:
     Generator(Global* ast,
               std::filesystem::path* p,
-              std::vector<FuncDefLookup>* funcDefs);
+              std::vector<LabelDefLookup>* funcDefs);
     ~Generator();
     void genBinary();
 
@@ -78,9 +78,9 @@ class Generator {
     /** Non owning pointer to source file */
     std::filesystem::path* FilePath = nullptr;
     /** Non owning pointer to function defintions created by parser stage */
-    std::vector<FuncDefLookup>* FuncDefs = nullptr;
-    /** Vector of function references which have to be resolved */
-    std::vector<ResolvableFuncRef> ResFuncRefs;
+    std::vector<LabelDefLookup>* LabelDefs = nullptr;
+    /** Vector of label references which have to be resolved */
+    std::vector<ResolvableLabelRef> ResLabelRefs;
     FileBuffer* Buffer = nullptr;
     Section* SecNameTable = nullptr;
     Section* SecCode = nullptr;
@@ -93,7 +93,7 @@ class Generator {
     void emitRegisterOffset(RegisterOffset* regOff, uint8_t* tempBuff);
     void emitInstruction(Instruction* instr);
     void createByteCode();
-    void resolveReferences();
+    void resolveLabelRefs();
     void fillSectionTable();
     void writeFile();
 };

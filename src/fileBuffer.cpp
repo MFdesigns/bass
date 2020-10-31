@@ -84,7 +84,8 @@ void FileBuffer::write(uint64_t index, void* data, uint32_t size) {
         // Get adjacent buffer and copy second data slice
         BufferRange* adjRange = &Buffers[i];
         uint64_t adjOffset = adjRange->Start - range->End;
-        std::memcpy(&adjRange->Buffer[adjOffset], &static_cast<uint8_t*>(data)[sliceOffset],
+        std::memcpy(&adjRange->Buffer[adjOffset],
+                    &static_cast<uint8_t*>(data)[sliceOffset],
                     range->End - index + 1);
     }
 }

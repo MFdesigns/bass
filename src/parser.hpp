@@ -21,7 +21,7 @@
 #include "token.hpp"
 #include <vector>
 
-enum class ParseState { GLOBAL_SCOPE, FUNC_BODY, INSTR_BODY, END };
+enum class ParseState { GLOBAL_SCOPE, INSTR_BODY, END };
 
 class Parser {
   public:
@@ -29,7 +29,7 @@ class Parser {
            Source* src,
            std::vector<Token>* tokens,
            Global* global,
-           std::vector<FuncDefLookup>* funcDefs);
+           std::vector<LabelDefLookup>* funcDefs);
     bool buildAST();
     bool typeCheck();
 
@@ -41,7 +41,7 @@ class Parser {
     /** Non owning vector of token */
     std::vector<Token>* Tokens = nullptr;
     /** Vector of non owning pointers to function declarations */
-    std::vector<FuncDefLookup>* FuncDefs = nullptr;
+    std::vector<LabelDefLookup>* LabelDefs = nullptr;
     /** Non owning pointer to global AST node */
     Global* Glob;
     Source* Src;
@@ -53,6 +53,5 @@ class Parser {
     bool parseRegOffset(Instruction* instr);
     void throwError(const char* msg, Token& tok);
     bool typeCheckInstrParams(Instruction* instr,
-                              std::vector<Identifier*>& labelRefs,
-                              std::vector<Identifier*>& funcRefs);
+                              std::vector<Identifier*>& labelRefs);
 };

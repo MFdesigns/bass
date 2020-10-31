@@ -32,9 +32,9 @@ Parser::Parser(std::vector<InstrDefNode>* instrDefs,
                Source* src,
                std::vector<Token>* tokens,
                Global* global,
-               std::vector<FuncDefLookup>* funcDefs)
+               std::vector<LabelDefLookup>* funcDefs)
     : InstrDefs(instrDefs), Src(src), Tokens(tokens), Glob(global),
-      FuncDefs(funcDefs){};
+      LabelDefs(funcDefs){};
 
 uint8_t Parser::getUVMType(Token* tok) {
     std::string typeName;
@@ -248,14 +248,13 @@ bool Parser::parseRegOffset(Instruction* instr) {
 bool Parser::buildAST() {
     ParseState state = ParseState::GLOBAL_SCOPE;
     // Pointer to currently parsed function or instruction
-    FuncDef* func = nullptr;
     Instruction* instr = nullptr;
 
     while (state != ParseState::END) {
         Token* t = eatToken();
         switch (state) {
         case ParseState::GLOBAL_SCOPE: {
-            // Ignore new line token
+            // Skip new line token
             if (t->Type == TokenType::EOL) {
                 t = eatToken();
             }
@@ -265,49 +264,13 @@ bool Parser::buildAST() {
                 continue;
             }
 
-            // If the current state is the Global scope we expect a identifier
-            // followed by an open curly bracket
-            if (t->Type != TokenType::IDENTIFIER) {
-                throwError("Expected identifier", *t);
-                return false;
-            }
-
-            std::string funcName;
-            Src->getSubStr(t->Index, t->Size, funcName);
-            Token* peek = nullptr;
-            bool eof = !peekToken(&peek);
-            if (eof || peek->Type != TokenType::LEFT_CURLY_BRACKET) {
-                throwError("Expected { in function definition", *t);
-                return false;
-            }
-
-            t = eatToken();
-            func = new FuncDef(t->Index, t->LineRow, t->LineCol, funcName);
-            Glob->Body.push_back(func);
-            state = ParseState::FUNC_BODY;
-        } break;
-        case ParseState::FUNC_BODY: {
-            // Skip new line token
-            if (t->Type == TokenType::EOL) {
-                t = eatToken();
-                if (t->Type == TokenType::END_OF_FILE) {
-                    throwError("Unexpected end of file in function body", *t);
-                    return false;
-                }
-            }
-
-            if (t->Type == TokenType::RIGHT_CURLY_BRACKET) {
-                state = ParseState::GLOBAL_SCOPE;
-                continue;
-            }
-
             switch (t->Type) {
             case TokenType::INSTRUCTION: {
                 std::string instrName;
                 Src->getSubStr(t->Index, t->Size, instrName);
                 instr = new Instruction(t->Index, t->LineRow, t->LineCol,
                                         instrName, t->Tag);
-                func->Body.push_back(instr);
+                Glob->Body.push_back(instr);
 
                 Token* peek = nullptr;
                 bool eof = !peekToken(&peek);
@@ -326,7 +289,7 @@ bool Parser::buildAST() {
                 Src->getSubStr(t->Index + 1, t->Size - 1, labelName);
                 LabelDef* label =
                     new LabelDef(t->Index, t->LineRow, t->LineCol, labelName);
-                func->Body.push_back(label);
+                Glob->Body.push_back(label);
 
                 Token* peek = nullptr;
                 bool eof = !peekToken(&peek);
@@ -336,10 +299,6 @@ bool Parser::buildAST() {
                 }
                 t = eatToken(); // TODO: BUG ?
             } break;
-            case TokenType::RIGHT_CURLY_BRACKET:
-                state = ParseState::GLOBAL_SCOPE;
-                continue;
-                break;
             default:
                 throwError("Unexpected token in function body", *t);
                 return false;
@@ -408,7 +367,7 @@ bool Parser::buildAST() {
                     endOfParamList = true;
                 }
             }
-            state = ParseState::FUNC_BODY;
+            state = ParseState::GLOBAL_SCOPE;
         } break;
         }
     }
@@ -423,8 +382,7 @@ bool Parser::buildAST() {
  * @return On success returns true otherwise false
  */
 bool Parser::typeCheckInstrParams(Instruction* instr,
-                                  std::vector<Identifier*>& labelRefs,
-                                  std::vector<Identifier*>& funcRefs) {
+                                  std::vector<Identifier*>& labelRefs) {
     // Get top node of instruction paramters tree
     InstrDefNode* paramNode = &(*InstrDefs)[instr->ASMDefIndex];
 
@@ -489,21 +447,13 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
                 type = typeInfo;
                 nextNode = &currentNode->Children[n];
             } break;
-            case InstrParamType::FUNC_ID: {
-                if (astNode->Type != ASTType::IDENTIFIER) {
-                    break;
-                }
-                Identifier* funcRef = dynamic_cast<Identifier*>(astNode);
-                funcRef->IdType = IdentifierType::FUNC_REF;
-                funcRefs.push_back(funcRef);
-                nextNode = &currentNode->Children[n];
-            } break;
+            // TODO: Remove legacy code
+            case InstrParamType::FUNC_ID:
             case InstrParamType::LABEL_ID: {
                 if (astNode->Type != ASTType::IDENTIFIER) {
                     break;
                 }
                 Identifier* labelRef = dynamic_cast<Identifier*>(astNode);
-                labelRef->IdType = IdentifierType::LABEL_REF;
                 labelRefs.push_back(labelRef);
                 nextNode = &currentNode->Children[n];
             } break;
@@ -618,121 +568,78 @@ bool Parser::typeCheck() {
     // Check if Global AST node has no children which means the main function is
     // missing for sure
     if (Glob->Body.size() == 0) {
-        std::cout << "[Type Checker] Missing main function\n";
+        std::cout << "[Type Checker] Missing main label\n";
         return false;
     }
 
-    // Try to find main function
-    FuncDef* mainFunc = nullptr;
+    // Try to find main entry point
+    LabelDef* mainEntry = nullptr;
     for (uint32_t i = 0; i < Glob->Body.size(); i++) {
         ASTNode* node = Glob->Body[i];
-        if (node->Type == ASTType::FUNCTION_DEFINTION) {
-            FuncDef* func = dynamic_cast<FuncDef*>(node);
-            if (func->Name == "main") {
-                mainFunc = func;
+        if (node->Type == ASTType::LABEL_DEFINITION) {
+            LabelDef* label = dynamic_cast<LabelDef*>(node);
+            if (label->Name == "main") {
+                mainEntry = label;
             }
         }
     }
 
     // Check if main function was found
-    if (mainFunc == nullptr) {
-        std::cout << "[Type Checker] Missing main function\n";
+    if (mainEntry == nullptr) {
+        std::cout << "[Type Checker] Missing main entry\n";
         return false;
     }
 
     // This is used to keep track of the localy referenced function and label
     // identifiers aswell as localy defined label definitions
-    std::vector<LabelDef*> scopeLabelDefs;
-    std::vector<Identifier*> scopeLabelRefs;
-    std::vector<Identifier*> scopeFuncRefs;
+    std::vector<Identifier*> labelRefs;
 
     // Tracks if an error occured while type checking
     bool typeCheckError = false;
     // Type check complete AST. This assumes that the build AST generated a
     // valid AST
     for (const auto& globElem : Glob->Body) {
-        // This assumes that all global nodes are function definitions. This
-        // might change with future features
-        FuncDef* func = dynamic_cast<FuncDef*>(globElem);
+        if (globElem->Type == ASTType::LABEL_DEFINITION) {
+            LabelDef* label = dynamic_cast<LabelDef*>(globElem);
 
-        // Check if function definition is redifined
-        bool funcRedef = false;
-        for (uint32_t i = 0; i < FuncDefs->size(); i++) {
-            if ((*FuncDefs)[i].Def->Name == func->Name) {
-                funcRedef = true;
-                break;
+            // Check if function definition is redifined
+            bool labelRedef = false;
+            for (uint32_t i = 0; i < LabelDefs->size(); i++) {
+                if ((*LabelDefs)[i].Def->Name == label->Name) {
+                    labelRedef = true;
+                    break;
+                }
             }
-        }
 
-        // If function is a redefinition continue with parsing the function body
-        // anyway
-        if (funcRedef) {
-            typeCheckError = true;
-            std::cout << "[Type Checker] Error: function is already defined\n";
-        }
-        FuncDefs->push_back(FuncDefLookup{func, 0});
-
-        // Clear all scoped definitions and references
-        scopeLabelDefs.clear();
-
-        // Check if function body is empty, display a warning and continue to
-        // parse next function
-        if (func->Body.size() == 0) {
-            typeCheckError = true;
-            std::cout << "[Type Checker] Warning: empty function body\n";
-            continue;
-        }
-
-        // Type check every function element. Again this assumes that the
-        // generated AST is valid
-        for (const auto& funcElem : func->Body) {
-            if (funcElem->Type == ASTType::INSTRUCTION) {
-                Instruction* instr = dynamic_cast<Instruction*>(funcElem);
-                if (!typeCheckInstrParams(instr, scopeLabelRefs,
-                                          scopeFuncRefs)) {
-                    typeCheckError = true;
-                    continue;
-                }
-            } else if (funcElem->Type == ASTType::LABEL_DEFINITION) {
-                LabelDef* label = dynamic_cast<LabelDef*>(funcElem);
-
-                // Check if label definiton was already defined in the local
-                // scope
-                bool labelRedef = false;
-                for (uint32_t i = 0; i < scopeLabelDefs.size(); i++) {
-                    if (scopeLabelDefs[i]->Name == label->Name) {
-                        labelRedef = true;
-                        break;
-                    }
-                }
-
-                if (labelRedef) {
-                    typeCheckError = true;
-                    std::cout << "[Type Checker] Error: label is already "
-                                 "defined in this scope\n";
-                    continue;
-                }
-
-                // If label is not a redefinition add it to the localy defined
-                // labels
-                scopeLabelDefs.push_back(label);
+            // If function is a redefinition continue with parsing the function
+            // body anyway
+            if (labelRedef) {
+                typeCheckError = true;
+                std::cout << "[Type Checker] Error: label is already defined\n";
+            }
+            LabelDefs->push_back(LabelDefLookup{label, 0});
+        } else if (globElem->Type == ASTType::INSTRUCTION) {
+            Instruction* instr = dynamic_cast<Instruction*>(globElem);
+            if (!typeCheckInstrParams(instr, labelRefs)) {
+                typeCheckError = true;
+                continue;
             }
         }
     }
 
-    // Check if all function references are resolved
-    for (const auto& funcRef : scopeFuncRefs) {
+    // Check if all label references are resolved
+    for (const auto& labelRef : labelRefs) {
         bool foundDef = false;
-        for (uint32_t i = 0; i < FuncDefs->size(); i++) {
-            if (funcRef->Name == (*FuncDefs)[i].Def->Name) {
+        for (uint32_t i = 0; i < LabelDefs->size(); i++) {
+            if (labelRef->Name == (*LabelDefs)[i].Def->Name) {
                 foundDef = true;
                 break;
             }
         }
 
         if (!foundDef) {
-            std::cout << "[Type Checker] Error: unresolved function '"
-                      << funcRef->Name << "'\n";
+            std::cout << "[Type Checker] Error: unresolved label '"
+                      << labelRef->Name << "'\n";
             typeCheckError = true;
         }
     }

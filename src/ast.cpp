@@ -24,12 +24,6 @@ ASTNode::ASTNode(ASTType type, uint32_t pos, uint32_t lineNr, uint32_t lineCol)
 Global::Global(uint32_t pos, uint32_t lineNr, uint32_t lineCol)
     : ASTNode(ASTType::GLOBAL, pos, lineNr, lineCol) {}
 
-FuncDef::FuncDef(uint32_t pos,
-                 uint32_t lineNr,
-                 uint32_t lineCol,
-                 std::string name)
-    : ASTNode(ASTType::FUNCTION_DEFINTION, pos, lineNr, lineCol), Name(name) {}
-
 LabelDef::LabelDef(uint32_t pos,
                    uint32_t lineNr,
                    uint32_t lineCol,
