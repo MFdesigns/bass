@@ -35,7 +35,7 @@ class FileBuffer {
     ~FileBuffer();
     void increase(uint32_t size);
     void push(uint8_t data);
-    void write(uint64_t index, uint8_t* data, uint32_t size);
+    void write(uint64_t index, void* data, uint32_t size);
     void writeToStream(std::ofstream& stream);
     static const uint32_t BUFFER_SIZE = 1024;
 

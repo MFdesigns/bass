@@ -53,7 +53,7 @@ void FileBuffer::increase(uint32_t size) {
 }
 
 // ONLY WORKS WITH DATA WHICH IS <= 1024 BYTES
-void FileBuffer::write(uint64_t index, uint8_t* data, uint32_t size) {
+void FileBuffer::write(uint64_t index, void* data, uint32_t size) {
     // Find buffer with start index
     BufferRange* range = nullptr;
     bool foundBuff = false;
@@ -84,7 +84,7 @@ void FileBuffer::write(uint64_t index, uint8_t* data, uint32_t size) {
         // Get adjacent buffer and copy second data slice
         BufferRange* adjRange = &Buffers[i];
         uint64_t adjOffset = adjRange->Start - range->End;
-        std::memcpy(&adjRange->Buffer[adjOffset], &data[sliceOffset],
+        std::memcpy(&adjRange->Buffer[adjOffset], &static_cast<uint8_t*>(data)[sliceOffset],
                     range->End - index + 1);
     }
 }
