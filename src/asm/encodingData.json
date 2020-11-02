@@ -1,85 +1,144 @@
 {
     "registers": [
         {
-            "group": "iReg",
-            "regs": [
-                {
-                    "name": "ip",
-                    "bytecode": "0x1"
-                },
-                {
-                    "name": "sp",
-                    "bytecode": "0x2"
-                },
-                {
-                    "name": "bp",
-                    "bytecode": "0x3"
-                },
-                {
-                    "name": "r0",
-                    "bytecode": "0x5"
-                },
-                {
-                    "name": "r1",
-                    "bytecode": "0x6"
-                },
-                {
-                    "name": "r2",
-                    "bytecode": "0x7"
-                },
-                {
-                    "name": "r3",
-                    "bytecode": "0x8"
-                },
-                {
-                    "name": "r4",
-                    "bytecode": "0x9"
-                },
-                {
-                    "name": "r5",
-                    "bytecode": "0xA"
-                },
-                {
-                    "name": "r6",
-                    "bytecode": "0xB"
-                },
-                {
-                    "name": "r7",
-                    "bytecode": "0xC"
-                },
-                {
-                    "name": "r8",
-                    "bytecode": "0xD"
-                },
-                {
-                    "name": "r9",
-                    "bytecode": "0xE"
-                },
-                {
-                    "name": "r10",
-                    "bytecode": "0xF"
-                },
-                {
-                    "name": "r11",
-                    "bytecode": "0x10"
-                },
-                {
-                    "name": "r12",
-                    "bytecode": "0x11"
-                },
-                {
-                    "name": "r13",
-                    "bytecode": "0x12"
-                },
-                {
-                    "name": "r14",
-                    "bytecode": "0x13"
-                },
-                {
-                    "name": "r15",
-                    "bytecode": "0x14"
-                }
-            ]
+            "name": "ip",
+            "bytecode": "0x1"
+        },
+        {
+            "name": "sp",
+            "bytecode": "0x2"
+        },
+        {
+            "name": "bp",
+            "bytecode": "0x3"
+        },
+        {
+            "name": "r0",
+            "bytecode": "0x5"
+        },
+        {
+            "name": "r1",
+            "bytecode": "0x6"
+        },
+        {
+            "name": "r2",
+            "bytecode": "0x7"
+        },
+        {
+            "name": "r3",
+            "bytecode": "0x8"
+        },
+        {
+            "name": "r4",
+            "bytecode": "0x9"
+        },
+        {
+            "name": "r5",
+            "bytecode": "0xA"
+        },
+        {
+            "name": "r6",
+            "bytecode": "0xB"
+        },
+        {
+            "name": "r7",
+            "bytecode": "0xC"
+        },
+        {
+            "name": "r8",
+            "bytecode": "0xD"
+        },
+        {
+            "name": "r9",
+            "bytecode": "0xE"
+        },
+        {
+            "name": "r10",
+            "bytecode": "0xF"
+        },
+        {
+            "name": "r11",
+            "bytecode": "0x10"
+        },
+        {
+            "name": "r12",
+            "bytecode": "0x11"
+        },
+        {
+            "name": "r13",
+            "bytecode": "0x12"
+        },
+        {
+            "name": "r14",
+            "bytecode": "0x13"
+        },
+        {
+            "name": "r15",
+            "bytecode": "0x14"
+        },
+        {
+            "name": "f0",
+            "bytecode": "0x16"
+        },
+        {
+            "name": "f1",
+            "bytecode": "0x17"
+        },
+        {
+            "name": "f2",
+            "bytecode": "0x18"
+        },
+        {
+            "name": "f3",
+            "bytecode": "0x19"
+        },
+        {
+            "name": "f4",
+            "bytecode": "0x1A"
+        },
+        {
+            "name": "f5",
+            "bytecode": "0x1B"
+        },
+        {
+            "name": "f6",
+            "bytecode": "0x1C"
+        },
+        {
+            "name": "f7",
+            "bytecode": "0x1D"
+        },
+        {
+            "name": "f8",
+            "bytecode": "0x1E"
+        },
+        {
+            "name": "f9",
+            "bytecode": "0x1F"
+        },
+        {
+            "name": "f10",
+            "bytecode": "0x20"
+        },
+        {
+            "name": "f11",
+            "bytecode": "0x21"
+        },
+        {
+            "name": "f12",
+            "bytecode": "0x22"
+        },
+        {
+            "name": "f13",
+            "bytecode": "0x23"
+        },
+        {
+            "name": "f14",
+            "bytecode": "0x24"
+        },
+        {
+            "name": "f15",
+            "bytecode": "0x25"
         }
     ],
     "instructions": [

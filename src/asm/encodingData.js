@@ -106,12 +106,31 @@ function tab(count) {
 }
 
 /**
+ * Generates the register lookup table
+ * @param {*} data JSON Data
+ * @return {string} generated C++ code
+ */
+function generateRegisterLookupTable(data) {
+    let buffer = 'const std::map<std::string, uint8_t> ASM_REGISTERS {\n';
+
+    data.registers.forEach((reg) => {
+        buffer += `${tab(1)}{"${reg.name}", ${reg.bytecode}},\n`;
+    });
+
+    buffer += '};\n\n';
+
+    return buffer;
+}
+
+/**
  *
  * @param {*} data JSON data from file
  */
 function generateHeaderFile(data) {
     // Create new output buffer and insert .hpp header
     let buffer = `${HEADER}\n`;
+
+    buffer += generateRegisterLookupTable(data);
 
     // Add namespace
     buffer += 'namespace Asm {\n';
