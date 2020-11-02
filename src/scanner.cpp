@@ -1,18 +1,18 @@
-/**
- * Copyright 2020 Michel Fäh
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// ======================================================================== //
+// Copyright 2020 Michel Fäh
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// ======================================================================== //
 
 #include "scanner.hpp"
 #include "asm/asm.hpp"
@@ -169,13 +169,18 @@ bool Scanner::isTypeInfo(std::string& token, uint8_t& tag) {
     return false;
 }
 
-bool Scanner::isRegister(std::string& token) {
+/**
+ * Checks is a token is a register. If so it will attach the register id to the tag
+ * @param token The token to check
+ * @param tag [out] If token is a register tag will hold the register id
+ * @return On register will return true otherwise false
+ */
+bool Scanner::isRegister(std::string& token, uint8_t& tag) {
     bool isRegister = false;
-    for (const auto& reg : REGISTERS) {
-        if (token == reg) {
-            isRegister = true;
-            break;
-        }
+    auto iter = ASM_REGISTERS.find(token);
+    if (iter != ASM_REGISTERS.end()) {
+        tag = iter->second;
+        isRegister = true;
     }
     return isRegister;
 }
@@ -273,9 +278,9 @@ bool Scanner::scanSource() {
             } else if (isTypeInfo(token, tag)) {
                 addToken(TokenType::TYPE_INFO, tokPos, tokLineRow,
                          tokLineColumn, token.size(), tag);
-            } else if (isRegister(token)) {
+            } else if (isRegister(token, tag)) {
                 addToken(TokenType::REGISTER_DEFINITION, tokPos, tokLineRow,
-                         tokLineColumn, token.size(), 0);
+                         tokLineColumn, token.size(), tag);
             } else {
                 // If the token is not an instruciton, type info or register
                 // then it must be an identifier
@@ -437,7 +442,7 @@ bool Scanner::scanSource() {
                     throwError("Type keyword inside label definition", tokPos);
                     skipLine();
                     valid = false;
-                } else if (isRegister(token)) {
+                } else if (isRegister(token, tag)) {
                     throwError("Register keyword inside label definition",
                                tokPos);
                     skipLine();

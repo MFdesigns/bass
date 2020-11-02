@@ -1,18 +1,18 @@
-/**
- * Copyright 2020 Michel Fäh
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// ======================================================================== //
+// Copyright 2020 Michel Fäh
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// ======================================================================== //
 
 #pragma once
 #include "token.hpp"
@@ -20,13 +20,6 @@
 #include <cstdint>
 #include <string>
 #include <vector>
-
-const static std::array<std::string, 35> REGISTERS = {
-    "ip",  "bp", "sp",  "r0",  "r1",  "r2",  "r3",  "r4",  "r5",
-    "r6",  "r7", "r8",  "r9",  "r10", "r11", "r12", "r13", "r14",
-    "r15", "f0", "f1",  "f2",  "f3",  "f4",  "f5",  "f6",  "f7",
-    "f8",  "f9", "f10", "f11", "f12", "f13", "f14", "f15",
-};
 
 class Source {
   public:
@@ -57,7 +50,7 @@ class Scanner {
     void throwError(const char* msg, uint32_t start);
     void skipLine();
     bool scanWord(uint32_t& outSize);
-    bool isRegister(std::string& token);
+    bool isRegister(std::string& token, uint8_t& tag);
     bool isTypeInfo(std::string& token, uint8_t& tag);
     bool isInstruction(std::string& token, uint8_t& tag);
     void addToken(TokenType type,
