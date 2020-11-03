@@ -15,27 +15,25 @@
 // ======================================================================== //
 
 #pragma once
-#include "ast.hpp"
-#include "scanner.hpp"
-#include "source.hpp"
-#include "token.hpp"
 #include <cstdint>
-#include <filesystem>
-#include <iostream>
-#include <vector>
+#include <memory>
+#include <string>
 
-class Assembler {
+/**
+ * Represents a source file
+ */
+class SourceFile {
   public:
-    Assembler(std::vector<InstrDefNode>* instrDefs);
-    ~Assembler();
-    bool readSource(char* pathName);
-    bool assemble();
+    SourceFile(uint8_t* data, uint32_t size);
+    uint32_t getSize();
+    uint8_t* getData();
+    bool getChar(uint32_t index, uint8_t& c);
+    bool getSubStr(uint32_t index, uint32_t size, std::string& out);
+    bool getLine(uint32_t index, std::string& out, uint32_t& lineIndex);
 
   private:
-    /** Non owning pointer to instuction definitons */
-    std::vector<InstrDefNode>* InstrDefs = nullptr;
-    SourceFile* Src = nullptr;
-    Scanner* Scan = nullptr;
-    std::vector<Token> Tokens;
-    std::filesystem::path File;
+    /** Raw file buffer */
+    std::unique_ptr<uint8_t> Data;
+    /** File buffer size */
+    const uint32_t Size = 0;
 };

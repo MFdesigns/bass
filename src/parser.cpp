@@ -29,7 +29,7 @@
  * @param funcDefs [out] Pointer to the FuncDefLookup
  */
 Parser::Parser(std::vector<InstrDefNode>* instrDefs,
-               Source* src,
+               SourceFile* src,
                std::vector<Token>* tokens,
                Global* global,
                std::vector<LabelDefLookup>* funcDefs)

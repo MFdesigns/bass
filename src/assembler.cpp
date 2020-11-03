@@ -53,7 +53,7 @@ bool Assembler::readSource(char* pathName) {
     uint8_t* buffer = new uint8_t[size];
     stream.read((char*)buffer, size);
 
-    Src = new Source(buffer, size);
+    Src = new SourceFile(buffer, size);
 
     return true;
 }

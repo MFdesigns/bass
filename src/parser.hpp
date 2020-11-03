@@ -26,7 +26,7 @@ enum class ParseState { GLOBAL_SCOPE, INSTR_BODY, END };
 class Parser {
   public:
     Parser(std::vector<InstrDefNode>* instrDefs,
-           Source* src,
+           SourceFile* src,
            std::vector<Token>* tokens,
            Global* global,
            std::vector<LabelDefLookup>* funcDefs);
@@ -44,7 +44,7 @@ class Parser {
     std::vector<LabelDefLookup>* LabelDefs = nullptr;
     /** Non owning pointer to global AST node */
     Global* Glob;
-    Source* Src;
+    SourceFile* Src;
     uint8_t getUVMType(Token* tok);
     uint8_t getRegisterTypeFromName(std::string& regName);
     int64_t strToInt(std::string& str);

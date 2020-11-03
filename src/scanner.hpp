@@ -15,37 +15,23 @@
 // ======================================================================== //
 
 #pragma once
+#include "source.hpp"
 #include "token.hpp"
 #include <array>
 #include <cstdint>
 #include <string>
 #include <vector>
 
-class Source {
-  public:
-    Source(uint8_t* data, uint32_t size);
-    ~Source();
-    uint32_t getSize();
-    uint8_t* getData();
-    bool getChar(uint32_t index, uint8_t& c);
-    bool getSubStr(uint32_t index, uint32_t size, std::string& out);
-    bool getLine(uint32_t index, std::string& out, uint32_t& lineIndex);
-
-  private:
-    uint8_t* Data = nullptr; // TODO: Make const
-    const uint32_t Size = 0;
-};
-
 class Scanner {
   public:
-    Scanner(Source* src, std::vector<Token>* outTokens);
+    Scanner(SourceFile* src, std::vector<Token>* outTokens);
     bool scanSource();
 
   private:
     uint32_t Cursor = 0;
     uint32_t CursorLineRow = 1;
     uint32_t CursorLineColumn = 1;
-    Source* Src = nullptr;
+    SourceFile* Src = nullptr;
     std::vector<Token>* Tokens = nullptr;
     void throwError(const char* msg, uint32_t start);
     void skipLine();

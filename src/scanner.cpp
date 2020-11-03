@@ -20,72 +20,7 @@
 #include <iomanip>
 #include <iostream>
 
-Source::Source(uint8_t* data, uint32_t size) : Data(data), Size(size) {}
-
-Source::~Source() {
-    delete[] Data;
-}
-
-uint32_t Source::getSize() {
-    return Size;
-}
-
-uint8_t* Source::getData() {
-    return Data;
-}
-
-bool Source::getChar(uint32_t index, uint8_t& c) {
-    if (index < Size) {
-        c = Data[index];
-        return true;
-    } else {
-        return false;
-    }
-}
-
-bool Source::getSubStr(uint32_t index, uint32_t size, std::string& out) {
-    if (index < Size && index + size < Size) {
-        out.clear();
-        out.reserve(size);
-        uint8_t c;
-        for (auto i = 0; i < size; i++) {
-            getChar(index + i, c);
-            out.push_back(c);
-        }
-        return true;
-    } else {
-        return false;
-    }
-}
-
-bool Source::getLine(uint32_t index, std::string& out, uint32_t& lineIndex) {
-    if (index >= Size) {
-        return false;
-    }
-
-    // Find the begining of the line
-    bool foundSOL = false;
-    while (!foundSOL && (int32_t)index - 1 > 0) {
-        if (Data[index - 1] == '\n') {
-            foundSOL = true;
-        } else {
-            index--;
-        }
-    }
-    lineIndex = index;
-
-    // Parse the whole line
-    uint8_t c = Data[index];
-    while (c != '\n' && index < Size) {
-        index++;
-        out.push_back(c);
-        c = Data[index];
-    }
-
-    return true;
-}
-
-Scanner::Scanner(Source* src, std::vector<Token>* outTokens)
+Scanner::Scanner(SourceFile* src, std::vector<Token>* outTokens)
     : Src(src), Tokens(outTokens) {
     Cursor = 0;
     CursorLineRow = 1;
@@ -170,7 +105,8 @@ bool Scanner::isTypeInfo(std::string& token, uint8_t& tag) {
 }
 
 /**
- * Checks is a token is a register. If so it will attach the register id to the tag
+ * Checks is a token is a register. If so it will attach the register id to the
+ * tag
  * @param token The token to check
  * @param tag [out] If token is a register tag will hold the register id
  * @return On register will return true otherwise false
