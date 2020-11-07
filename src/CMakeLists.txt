@@ -28,10 +28,6 @@ elseif(UNIX)
     # MacOS specific platform files
     if(APPLE)
         # Append additional macos files to unix
-        set(PLATFORM_FILES
-            "${PLATFORM_FILES} "
-            # files...
-        )
     endif()
 endif()
 
