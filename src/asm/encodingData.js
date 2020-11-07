@@ -19,8 +19,6 @@
 // To run this file:
 // deno run --unstable --allow-read --allow-write ./src/asm/encodingData.js
 
-import { readJson } from "https://deno.land/std/fs/mod.ts";
-
 const DIRNAME = './src/asm/';
 const IN_FILE_NAME = 'encodingData.json';
 const OUT_FILE_NAME = 'encoding.hpp';
@@ -196,7 +194,9 @@ function generateHeaderFile(data) {
 }
 
 (async function main() {
-    const data = await readJson(`${DIRNAME}${IN_FILE_NAME}`);
-    const content = generateHeaderFile(data);
+    const data = Deno.readFileSync(`${DIRNAME}${IN_FILE_NAME}`);
+    const decoder = new TextDecoder('utf-8');
+    const jsonData = JSON.parse(decoder.decode(data));
+    const content = generateHeaderFile(jsonData);
     await Deno.writeTextFile(`${DIRNAME}${OUT_FILE_NAME}`, content);
 }())
