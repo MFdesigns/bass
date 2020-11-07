@@ -1,4 +1,6 @@
-add_executable(bass
+set(PROJECT_NAME bass)
+
+set(SOURCE_FILES
     main.cpp
     assembler.cpp assembler.hpp
     token.cpp token.hpp
@@ -8,6 +10,29 @@ add_executable(bass
     generator.cpp generator.hpp
     fileBuffer.cpp fileBuffer.hpp
     source.cpp source.hpp
+    cli.hpp
     asm/asm.cpp asm/asm.hpp
     asm/encoding.hpp
 )
+
+# Win32 specific platform files
+if(WIN32)
+    set(PLATFORM_FILES
+        platform/win32Platform.cpp
+    )
+# Linux and MacOS shared platform files
+elseif(UNIX)
+    set(PLATFORM_FILES
+        platform/unixPlatform.cpp
+    )
+    # MacOS specific platform files
+    if(APPLE)
+        # Append additional macos files to unix
+        set(PLATFORM_FILES
+            "${PLATFORM_FILES} "
+            # files...
+        )
+    endif()
+endif()
+
+add_executable(${PROJECT_NAME} ${SOURCE_FILES} ${PLATFORM_FILES})
