@@ -19,3 +19,5 @@ CheckOptions:
       value: CamelCase
     - key: readability-identifier-naming.ConstexprVariableCase
       value: UPPER_CASE
+    - key: readability-identifier-naming.GlobalConstantCase
+      value: UPPER_CASE
