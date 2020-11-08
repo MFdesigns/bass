@@ -151,8 +151,6 @@ void Scanner::skipLine() {
     }
 }
 
-// TODO: Rewrite to not depend to be started on 2. char. Also maybe the reason
-// for the error token size bug?
 /**
  * Scans a word which starts with [a-zA-Z] contains [a-zA-Z_0-9]+ terminated by
  * [ \t{\n\r,\]+\-*]
