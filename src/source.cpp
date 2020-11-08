@@ -45,7 +45,7 @@ uint8_t* SourceFile::getData() {
  * @param c [out] Character at given index
  * @return If index is in range of file buffer returns true otherwise false
  */
-bool SourceFile::getChar(uint32_t index, uint8_t& c) {
+bool SourceFile::getChar(uint32_t index, char& c) {
     if (index < Size) {
         c = Data.get()[index];
         return true;
@@ -65,7 +65,7 @@ bool SourceFile::getSubStr(uint32_t index, uint32_t size, std::string& out) {
     if (index < Size && index + size < Size) {
         out.clear();
         out.reserve(size);
-        uint8_t c;
+        char c;
         for (auto i = 0; i < size; i++) {
             getChar(index + i, c);
             out.push_back(c);

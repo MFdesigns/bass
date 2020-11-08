@@ -17,9 +17,15 @@
 #include "scanner.hpp"
 #include "asm/asm.hpp"
 #include "asm/encoding.hpp"
+#include "cli.hpp"
 #include <iomanip>
 #include <iostream>
 
+/**
+ * Constructs a new Scanner instance
+ * @param src Pointer to the source file
+ * @param outTokens [out] Pointer to the output token vector
+ */
 Scanner::Scanner(SourceFile* src, std::vector<Token>* outTokens)
     : Src(src), Tokens(outTokens) {
     Cursor = 0;
@@ -27,62 +33,69 @@ Scanner::Scanner(SourceFile* src, std::vector<Token>* outTokens)
     CursorLineColumn = 1;
 }
 
+/**
+ * Increments the line row
+ */
 void Scanner::incLineRow() {
     CursorLineRow++;
     CursorLineColumn = 0;
 };
 
+/**
+ * Increments the cursor
+ */
 void Scanner::incCursor() {
     Cursor++;
     CursorLineColumn++;
 }
 
-bool Scanner::eatChar(uint8_t& out) {
-    bool eof = false;
+/**
+ * Returns the char at the current Cursor index from the source file after
+ * increasing the Cursor
+ * @return On success returns char. At end of file returns 0
+ */
+char Scanner::eatChar() {
+    incCursor();
+    if (Cursor >= Src->getSize()) {
+        return 0;
+    }
+    char c = 0;
+    Src->getChar(Cursor, c);
+    return c;
+}
+
+/**
+ * Skips ahead in the source file
+ * Note: This does not take new lines into account and will not increase the
+ * line row if a \n is skipped
+ * @param count Amount of chars to skip
+ */
+void Scanner::skipChar(uint32_t count) {
+    Cursor += count;
+    CursorLineColumn += count;
+}
+
+/**
+ * Peeks the next token without increasing the Cursor
+ * @return On success returns char. At end of file returns 0
+ */
+char Scanner::peekChar() {
     if (Cursor + 1 >= Src->getSize()) {
-        eof = true;
-    } else {
-        uint8_t* data = Src->getData();
-        Cursor++;
-        CursorLineColumn++;
-        out = data[Cursor];
+        return 0;
     }
-    return eof;
+    char c = 0;
+    Src->getChar(Cursor + 1, c);
+    return c;
 }
 
-bool Scanner::eatChars(uint32_t count, uint8_t& out) {
-    bool eof = false;
-    if (Cursor + count >= Src->getSize()) {
-        eof = true;
-    } else {
-        uint8_t* data = Src->getData();
-        Cursor += count;
-        CursorLineColumn += count;
-        out = data[Cursor];
-    }
-    return eof;
-}
-
-bool Scanner::peekChar(uint8_t& out) {
-    bool eof = false;
-    if (Cursor + 1 >= Src->getSize()) {
-        eof = true;
-    } else {
-        uint8_t* data = Src->getData();
-        out = data[Cursor + 1];
-    }
-    return eof;
-}
-
-void Scanner::addToken(TokenType type,
-                       uint32_t index,
-                       uint32_t lineRow,
-                       uint32_t lineColumn,
-                       uint32_t size,
-                       uint8_t tag) {
-    Tokens->emplace_back(type, index, size, lineRow, lineColumn, tag);
-}
-
+/**
+ * Checks if a token is an instruction. If so it will attach the instruction
+ * encoding id to the tag
+ * @param token The token to check
+ * @param tag [out] If token is an instruction tag will hold the instruction
+ * encoding id
+ * @return On instruction will return true otherwise false
+ */
 bool Scanner::isInstruction(std::string& token, uint8_t& tag) {
     bool isInstr = false;
     auto iter = Asm::INSTR_NAMES.find(token);
@@ -94,6 +107,12 @@ bool Scanner::isInstruction(std::string& token, uint8_t& tag) {
     return isInstr;
 }
 
+/**
+ * Checks if a token is a type info. If so it will attach the type id to the tag
+ * @param token The token to check
+ * @param tag [out] If token is a type info tag will hold the type id
+ * @return On type will return true otherwise false
+ */
 bool Scanner::isTypeInfo(std::string& token, uint8_t& tag) {
     for (const auto& type : UVM_TYPE_DEFS) {
         if (token == type.Str) {
@@ -105,7 +124,7 @@ bool Scanner::isTypeInfo(std::string& token, uint8_t& tag) {
 }
 
 /**
- * Checks is a token is a register. If so it will attach the register id to the
+ * Checks if a token is a register. If so it will attach the register id to the
  * tag
  * @param token The token to check
  * @param tag [out] If token is a register tag will hold the register id
@@ -121,274 +140,275 @@ bool Scanner::isRegister(std::string& token, uint8_t& tag) {
     return isRegister;
 }
 
-void Scanner::throwError(const char* msg, uint32_t start) {
-    std::string line;
-    uint32_t lineIndex = 0;
-    Src->getLine(start, line, lineIndex);
-    std::string lineNr = std::to_string(lineIndex);
-
-    uint32_t errOffset = start - lineIndex;
-    uint8_t c = 0;
-    Src->getChar(Cursor, c);
-
-    std::string lineNumber = std::to_string(CursorLineRow);
-    std::cout << "[Syntax Error] " << msg << " at Ln " << CursorLineRow
-              << ", Col " << CursorLineColumn << " at char '" << c << "' (U+"
-              << (uint16_t)c << ")\n"
-              << "  " << lineNumber << " | " << line << '\n'
-              << "  " << std::setw(2 + lineNumber.size()) << std::setfill(' ')
-              << " |" << std::setw(errOffset + 1) << std::setfill(' ') << ' '
-              << std::setw(CursorLineColumn - errOffset) << std::setfill('~')
-              << '~' << '\n'
-              << std::endl;
-}
-
-bool Scanner::scanWord(uint32_t& outSize) {
-    uint8_t c = ' ';
-    Src->getChar(Cursor, c);
-    bool terminated = false;
-    do {
-        if (c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z' || c == '_' ||
-            c >= '0' && c <= '9') {
-            outSize++;
-            // check if next char terminates identifier if not eat next
-            // char
-            uint8_t peek;
-            terminated = !Src->getChar(Cursor + 1, peek);
-            if (!terminated &&
-                (peek == '\t' || peek == ' ' || peek == '{' || peek == '\n' ||
-                 peek == '\r' || peek == ',' || peek == ']' || peek == '+' ||
-                 peek == '-' || peek == '*')) {
-                terminated = true;
-            } else if (!terminated) {
-                eatChar(c);
-            }
-        } else {
-            return false;
-        }
-    } while (!terminated);
-    return true;
-}
-
+/**
+ * Skips the current line where the Cursor is on
+ */
 void Scanner::skipLine() {
-    uint8_t peek = ' ';
-    bool terminated = peekChar(peek);
-    while (!terminated && peek != '\n') {
+    char peek = peekChar();
+    while (peek != 0 && peek != '\n') {
         incCursor();
-        terminated = peekChar(peek);
+        peek = peekChar();
     }
 }
 
+// TODO: Rewrite to not depend to be started on 2. char. Also maybe the reason
+// for the error token size bug?
+/**
+ * Scans a word which starts with [a-zA-Z] contains [a-zA-Z_0-9]+ terminated by
+ * [ \t{\n\r,\]+\-*]
+ * @param outSize The word size
+ * @return On valid word returns true otherwise false
+ */
+bool Scanner::scanWord(uint32_t& outSize) {
+    char c = ' ';
+    Src->getChar(Cursor, c);
+    bool validWord = true;
+    char peek = peekChar();
+
+    if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')) {
+        outSize++;
+    } else {
+        return false;
+    }
+
+    while (peek != '\t' && peek != ' ' && peek != '{' && peek != '\n' &&
+           peek != '\r' && peek != ',' && peek != ']' && peek != '+' &&
+           peek != '-' && peek != '*') {
+        c = eatChar();
+        if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_' ||
+            (c >= '0' && c <= '9')) {
+            outSize++;
+            peek = peekChar();
+        } else {
+            validWord = false;
+            break;
+        }
+    }
+
+    return validWord;
+}
+
+/**
+ * Scans a number
+ * @param outSize [out] Size of the number string
+ * @return On valid number retuns true otherwise false
+ */
+bool Scanner::scanNumber(uint32_t& outSize, bool& isFloat) {
+    bool validNumber = true;
+
+    // Get first char and peek
+    char c = ' ';
+    Src->getChar(Cursor, c);
+    char peek = peekChar();
+
+    // Check if number has hex prefix 0x
+    if (c == '0' && peek == 'x') {
+        outSize += 2;
+        incCursor();
+
+        // Parse hex number until terminated by [ \n\t,\r\]]
+        while (peek != 0 && peek != ' ' && peek != '\n' && peek != '\t' &&
+               peek != ',' && peek != '\r' && peek != ']') {
+            c = eatChar();
+            // Check for valid hex number [0-9a-fA-F]+
+            if ((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') ||
+                (c >= 'A' && c <= 'F')) {
+                outSize++;
+                peek = peekChar();
+            } else {
+                validNumber = false;
+                break;
+            }
+        }
+
+    } else {
+        // Parse dec or float number until terminated by [ \n\t,\r\]]
+        while (peek != 0 && peek != ' ' && peek != '\n' && peek != '\t' &&
+               peek != ',' && peek != '\r' && peek != ']') {
+
+            // Valid dec or float number [0-9]+
+            if (c >= '0' && c <= '9') {
+                outSize++;
+                // If number contains dot '.' number is a float. If number
+                // contains more than one dot '.' number is invalid
+            } else if (c == '.') {
+                if (isFloat) {
+                    validNumber = false;
+                    break;
+                }
+
+                isFloat = true;
+                outSize++;
+            } else {
+                validNumber = false;
+                break;
+            }
+            c = eatChar();
+            peek = peekChar();
+        }
+    }
+
+    return validNumber;
+}
+
+/**
+ * Checks what type of token a word is
+ * @param word Token string
+ * @param tag  [out] Pointer to tag information can be nullptr
+ * @return Type of token
+ */
+TokenType Scanner::identifyWord(std::string& word, uint8_t* tag) {
+    TokenType type = TokenType::IDENTIFIER;
+    uint8_t tmpTag = 0;
+    if (isInstruction(word, tmpTag)) {
+        type = TokenType::INSTRUCTION;
+    } else if (isTypeInfo(word, tmpTag)) {
+        type = TokenType::TYPE_INFO;
+    } else if (isRegister(word, tmpTag)) {
+        type = TokenType::REGISTER_DEFINITION;
+    }
+
+    if (tag != nullptr) {
+        *tag = tmpTag;
+    }
+
+    // If the token is not an instruction, type info or register def then it
+    // must be an identifier which is the default value of type
+    return type;
+}
+
+/**
+ * Scans the source file and output tokens
+ * @return On success returns true otherwise false
+ */
 bool Scanner::scanSource() {
-    uint8_t* data = Src->getData();
-    uint8_t c = data[Cursor]; // char at current cursor position
-    bool eof = false;
-    bool valid = true;
-    while (!eof) {
+    bool validSource = true;
+    char currChar = 0;
+    Src->getChar(Cursor, currChar);
+
+    while (currChar != 0) {
         // Take a snapshot of the current token position before parsing
         // further and increasing the cursor
         uint32_t tokPos = Cursor;
         uint32_t tokLineRow = CursorLineRow;
         uint32_t tokLineColumn = CursorLineColumn;
-        // Handle valid identifier start and figure out if identifier could be
-        // instruction, type info or register
-        if (c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z' || c == '_') {
-            uint32_t tokSize = 0;
-            bool validId = scanWord(tokSize);
-            if (!validId) {
-                throwError("Unexpected token in identifier", tokPos);
+
+        // Check if char is a valid word start [a-zA-Z_]
+        if ((currChar >= 'A' && currChar <= 'Z') ||
+            (currChar >= 'a' && currChar <= 'z') || currChar == '_') {
+            // Get complete word
+            uint32_t wordSize = 0;
+            bool validWord = scanWord(wordSize);
+            if (!validWord) {
+                validSource = false;
+                printError(Src, tokPos, wordSize, tokLineRow, tokLineColumn,
+                           "Unexpected character in identifer");
                 skipLine();
-                valid = false;
-                eof = eatChar(c);
+                currChar = eatChar();
                 continue;
             }
 
+            // Get word as string
             std::string token{};
-            Src->getSubStr(tokPos, tokSize, token);
+            Src->getSubStr(tokPos, wordSize, token);
 
-            // Check if token is instruction
+            // Get word type and add it to tokens array
             uint8_t tag = 0;
-            if (isInstruction(token, tag)) {
-                addToken(TokenType::INSTRUCTION, tokPos, tokLineRow,
-                         tokLineColumn, token.size(), tag);
-            } else if (isTypeInfo(token, tag)) {
-                addToken(TokenType::TYPE_INFO, tokPos, tokLineRow,
-                         tokLineColumn, token.size(), tag);
-            } else if (isRegister(token, tag)) {
-                addToken(TokenType::REGISTER_DEFINITION, tokPos, tokLineRow,
-                         tokLineColumn, token.size(), tag);
-            } else {
-                // If the token is not an instruciton, type info or register
-                // then it must be an identifier
-                addToken(TokenType::IDENTIFIER, tokPos, tokLineRow,
-                         tokLineColumn, token.size(), 0);
-            }
-            eof = eatChar(c);
+            TokenType type = identifyWord(token, &tag);
+            Tokens->emplace_back(type, tokPos, wordSize, tokLineRow,
+                                 tokLineColumn, tag);
+            currChar = eatChar();
 
-            // If char is whitespace just eat it and continue
-        } else if (c == ' ' || c == '\t') {
-            eof = eatChar(c);
-        } else if (c >= '0' && c <= '9') {
-            // TODO: Fix this ugly mess!
-            std::string token;
+        } else if (currChar >= '0' && currChar <= '9') {
+            uint32_t numSize = 0;
+            bool isFloat = false;
+            bool validNum = scanNumber(numSize, isFloat);
+            if (!validNum) {
+                validSource = false;
+                printError(Src, tokPos, numSize, tokLineRow, tokLineColumn,
+                           "Unexpected character in number");
+                skipLine();
+                currChar = eatChar();
+                continue;
+            }
+
             TokenType type = TokenType::INTEGER_NUMBER;
-            bool terminated = false;
-            bool validNumber = true;
-            uint8_t peek;
-            terminated = peekChar(peek);
-            // Check for possible hex prefix
-            if (c == '0' && peek == 'x') {
-                // consume prefix
-                token.append("0x");
-                terminated = eatChars(2, c);
-                do {
-                    terminated = peekChar(peek);
-                    if (c >= '0' && c <= '9' || c >= 'a' && c <= 'f' ||
-                        c >= 'A' && c <= 'F') {
-                        token.push_back(c);
-                        if (peek == '\t' || peek == ' ' || peek == ',' ||
-                            peek == '\n' || peek == '\r' || peek == ']') {
-                            terminated = true;
-                        } else {
-                            terminated = eatChar(c);
-                        }
-                    } else {
-                        throwError("Expected hex number",
-                                   Cursor - token.size());
-                        skipLine();
-                        validNumber = false;
-                        valid = false;
-                    }
-
-                } while (!terminated && validNumber);
-            } else {
-                do {
-                    terminated = peekChar(peek);
-                    if (c >= '0' && c <= '9') {
-                        token.push_back(c);
-                        if (peek == '\t' || peek == ' ' || peek == ',' ||
-                            peek == '\n' || peek == '\r' || peek == ']') {
-                            terminated = true;
-                        } else {
-                            terminated = eatChar(c);
-                        }
-                    } else if (c == '.' && type == TokenType::INTEGER_NUMBER) {
-                        type = TokenType::FLOAT_NUMBER;
-                        token.push_back(c);
-                        if (peek == '\t' || peek == ' ' || peek == ',' ||
-                            peek == '\n' || peek == '\r' || peek == ']') {
-                            terminated = true;
-                        } else {
-                            terminated = eatChar(c);
-                        }
-                    } else if (c == '.' && type == TokenType::FLOAT_NUMBER) {
-                        throwError("More than one decimal point",
-                                   Cursor - token.size());
-                        skipLine();
-                        valid = false;
-                        validNumber = false;
-                    } else {
-                        throwError("Expected number", Cursor - token.size());
-                        skipLine();
-                        valid = false;
-                        validNumber = false;
-                    }
-                } while (!terminated && validNumber);
+            if (isFloat) {
+                type = TokenType::FLOAT_NUMBER;
             }
+            Tokens->emplace_back(type, tokPos, numSize, tokLineRow,
+                                 tokLineColumn, 0);
+            currChar = eatChar();
 
-            if (validNumber) {
-                addToken(type, tokPos, tokLineRow, tokLineColumn, token.size(),
-                         0);
-            }
-            eof = eatChar(c);
-
+        } else if (currChar == ' ' || currChar == '\t') {
+            // Skip whitespace
+            currChar = eatChar();
         } else {
-            switch (c) {
-            case '/': {
-                uint8_t peek;
-                bool terminated = peekChar(peek);
-                if (peek == '/') {
-                    eatChars(2, c);
-                    while (!terminated && peek != '\n') {
-                        eatChar(c);
-                        terminated = peekChar(peek);
-                    }
-                } else {
-                    throwError("Expected double back slash", Cursor);
-                    skipLine();
-                    valid = false;
-                }
-            } break;
+            switch (currChar) {
             case '+':
-                addToken(TokenType::PLUS_SIGN, Cursor, CursorLineRow,
-                         CursorLineColumn, 1, 0);
+                Tokens->emplace_back(TokenType::PLUS_SIGN, Cursor, 1,
+                                     CursorLineRow, CursorLineColumn, 0);
                 break;
             case '-':
-                addToken(TokenType::MINUS_SIGN, Cursor, CursorLineRow,
-                         CursorLineColumn, 1, 0);
+                Tokens->emplace_back(TokenType::MINUS_SIGN, Cursor, 1,
+                                     CursorLineRow, CursorLineColumn, 0);
                 break;
             case '*':
-                addToken(TokenType::ASTERISK, Cursor, CursorLineRow,
-                         CursorLineColumn, 1, 0);
+                Tokens->emplace_back(TokenType::ASTERISK, Cursor, 1,
+                                     CursorLineRow, CursorLineColumn, 0);
                 break;
             case ',':
-                addToken(TokenType::COMMA, Cursor, CursorLineRow,
-                         CursorLineColumn, 1, 0);
+                Tokens->emplace_back(TokenType::COMMA, Cursor, 1, CursorLineRow,
+                                     CursorLineColumn, 0);
                 break;
             case '[':
-                addToken(TokenType::LEFT_SQUARE_BRACKET, Cursor, CursorLineRow,
-                         CursorLineColumn, 1, 0);
+                Tokens->emplace_back(TokenType::LEFT_SQUARE_BRACKET, Cursor, 1,
+                                     CursorLineRow, CursorLineColumn, 0);
                 break;
             case ']':
-                addToken(TokenType::RIGHT_SQUARE_BRACKET, Cursor, CursorLineRow,
-                         CursorLineColumn, 1, 0);
+                Tokens->emplace_back(TokenType::RIGHT_SQUARE_BRACKET, Cursor, 1,
+                                     CursorLineRow, CursorLineColumn, 0);
                 break;
             case '{':
-                addToken(TokenType::LEFT_CURLY_BRACKET, Cursor, CursorLineRow,
-                         CursorLineColumn, 1, 0);
+                Tokens->emplace_back(TokenType::LEFT_CURLY_BRACKET, Cursor, 1,
+                                     CursorLineRow, CursorLineColumn, 0);
                 break;
             case '}':
-                addToken(TokenType::RIGHT_CURLY_BRACKET, Cursor, CursorLineRow,
-                         CursorLineColumn, 1, 0);
+                Tokens->emplace_back(TokenType::RIGHT_CURLY_BRACKET, Cursor, 1,
+                                     CursorLineRow, CursorLineColumn, 0);
                 break;
             case '@': {
-                uint32_t tokSize = 1;
+                // Start at 1 to include @ sign
+                uint32_t labelSize = 1;
                 incCursor();
-                bool validId = scanWord(tokSize);
-                if (!validId) {
-                    throwError("Unexpected token in label definition", tokPos);
+                bool validWord = scanWord(labelSize);
+                if (!validWord) {
+                    validSource = false;
+                    printError(Src, tokPos, labelSize, tokLineRow,
+                               tokLineColumn,
+                               "Unexpected character in label identifer");
                     skipLine();
-                    eof = eatChar(c);
-                    valid = false;
+                    currChar = eatChar();
                     continue;
                 }
 
-                // Get token without @ sign
-                std::string token{};
-                Src->getSubStr(tokPos + 1, tokSize - 1, token);
+                // Get label as string
+                std::string label{};
+                Src->getSubStr(tokPos, labelSize, label);
 
-                // Check if token is instruction
-                uint8_t tag = 0; // Not used here
-                if (isInstruction(token, tag)) {
-                    throwError("Instruction keyword inside label definition",
-                               tokPos);
+                // Get word type and add it to tokens array
+                TokenType type = identifyWord(label, nullptr);
+                if (type != TokenType::IDENTIFIER) {
+                    printError(Src, tokPos, labelSize, tokLineRow,
+                               tokLineColumn,
+                               "Keyword inside label identifier");
                     skipLine();
-                    valid = false;
-                } else if (isTypeInfo(token, tag)) {
-                    throwError("Type keyword inside label definition", tokPos);
-                    skipLine();
-                    valid = false;
-                } else if (isRegister(token, tag)) {
-                    throwError("Register keyword inside label definition",
-                               tokPos);
-                    skipLine();
-                    valid = false;
-                } else {
-                    // If the token is not an instruciton, type info or register
-                    // then it must be an identifier
-                    addToken(TokenType::LABEL_DEF, tokPos, tokLineRow,
-                             tokLineColumn, token.size() + 1, 0);
+                    currChar = eatChar();
+                    continue;
                 }
+
+                Tokens->emplace_back(TokenType::LABEL_DEF, tokPos, labelSize,
+                                     tokLineRow, tokLineColumn, 0);
             } break;
             case '\r':
                 // Skip CR
@@ -396,27 +416,43 @@ bool Scanner::scanSource() {
             case '\n': {
                 // Only add EOL tokens once in a row
                 Token* last = nullptr;
-                if (Tokens->size() > 0) {
+                if (!Tokens->empty()) {
                     last = &Tokens->back();
                 }
                 if (last != nullptr && last->Type != TokenType::EOL) {
-                    addToken(TokenType::EOL, Cursor, CursorLineRow,
-                             CursorLineColumn, 1, 0);
+                    Tokens->emplace_back(TokenType::EOL, Cursor, 1,
+                                         CursorLineRow, CursorLineColumn, 0);
                 }
                 incLineRow();
             } break;
+            case '/': {
+                char peek = peekChar();
+                if (peek == '/') {
+                    incCursor();
+                    peek = peekChar();
+                    while (peek != 0 && peek != '\n') {
+                        incCursor();
+                        peek = peekChar();
+                    }
+                } else {
+                    validSource = false;
+                    skipLine();
+                }
+            } break;
             default:
-                throwError("Unexpected character", Cursor);
+                printError(Src, tokPos, 1, tokLineRow, tokLineColumn,
+                           "Unexpected character");
                 skipLine();
-                valid = false;
+                validSource = false;
+                break;
             }
-            eof = eatChar(c);
+            currChar = eatChar();
         }
     }
 
-    // TODO: Fix EOF position
-    addToken(TokenType::END_OF_FILE, Cursor, CursorLineRow, CursorLineColumn, 1,
-             0);
+    // Add end of file token
+    Tokens->emplace_back(TokenType::END_OF_FILE, Cursor - 1, 1, CursorLineRow,
+                         CursorLineColumn, 0);
 
-    return valid;
+    return validSource;
 }

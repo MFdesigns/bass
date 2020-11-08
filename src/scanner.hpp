@@ -17,37 +17,39 @@
 #pragma once
 #include "source.hpp"
 #include "token.hpp"
-#include <array>
 #include <cstdint>
 #include <string>
 #include <vector>
 
+/**
+ * Scans a source file and outputs an array of tokens
+ */
 class Scanner {
   public:
     Scanner(SourceFile* src, std::vector<Token>* outTokens);
     bool scanSource();
 
   private:
-    uint32_t Cursor = 0;
-    uint32_t CursorLineRow = 1;
-    uint32_t CursorLineColumn = 1;
+    /** Non owning pointer to the source file */
     SourceFile* Src = nullptr;
+    /** Non owning pointer to the output token vector */
     std::vector<Token>* Tokens = nullptr;
-    void throwError(const char* msg, uint32_t start);
-    void skipLine();
-    bool scanWord(uint32_t& outSize);
-    bool isRegister(std::string& token, uint8_t& tag);
-    bool isTypeInfo(std::string& token, uint8_t& tag);
-    bool isInstruction(std::string& token, uint8_t& tag);
-    void addToken(TokenType type,
-                  uint32_t index,
-                  uint32_t lineRow,
-                  uint32_t lineColumn,
-                  uint32_t size,
-                  uint8_t tag);
-    bool peekChar(uint8_t& out);
-    bool eatChars(uint32_t count, uint8_t& out);
-    bool eatChar(uint8_t& out);
+    /** The current index into the source file */
+    uint32_t Cursor = 0;
+    /** The current line row at the cursor poition */
+    uint32_t CursorLineRow = 1;
+    /** The current line column at the cursor poition */
+    uint32_t CursorLineColumn = 1;
     void incLineRow();
     void incCursor();
+    char eatChar();
+    char peekChar();
+    void skipChar(uint32_t count);
+    void skipLine();
+    bool scanWord(uint32_t& outSize);
+    bool scanNumber(uint32_t& outSize, bool& isFloat);
+    static TokenType identifyWord(std::string& word, uint8_t* tag);
+    static bool isRegister(std::string& token, uint8_t& tag);
+    static bool isTypeInfo(std::string& token, uint8_t& tag);
+    static bool isInstruction(std::string& token, uint8_t& tag);
 };

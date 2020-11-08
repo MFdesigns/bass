@@ -26,8 +26,9 @@ class SourceFile {
   public:
     SourceFile(uint8_t* data, uint32_t size);
     uint32_t getSize();
+    // TODO: Deprecate this
     uint8_t* getData();
-    bool getChar(uint32_t index, uint8_t& c);
+    bool getChar(uint32_t index, char& c);
     bool getSubStr(uint32_t index, uint32_t size, std::string& out);
     bool getLine(uint32_t index, std::string& out, uint32_t& lineIndex);
 
