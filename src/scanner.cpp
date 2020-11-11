@@ -114,13 +114,13 @@ bool Scanner::isInstruction(std::string& token, uint8_t& tag) {
  * @return On type will return true otherwise false
  */
 bool Scanner::isTypeInfo(std::string& token, uint8_t& tag) {
-    for (const auto& type : UVM_TYPE_DEFS) {
-        if (token == type.Str) {
-            tag = type.Id;
-            return true;
-        }
+    bool isTypeInfo = false;
+    auto iter = UVM_TYPE_DEFS.find(token);
+    if (iter != UVM_TYPE_DEFS.end()) {
+        tag = iter->second;
+        isTypeInfo = true;
     }
-    return false;
+    return isTypeInfo;
 }
 
 /**

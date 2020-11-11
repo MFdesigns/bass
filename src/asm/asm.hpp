@@ -17,6 +17,8 @@
 #pragma once
 #include <array>
 #include <cstdint>
+#include <map>
+#include <string>
 #include <vector>
 
 // UVM type definitions
@@ -27,16 +29,20 @@ constexpr uint8_t UVM_TYPE_I64 = 0x04;
 constexpr uint8_t UVM_TYPE_F32 = 0xF0;
 constexpr uint8_t UVM_TYPE_F64 = 0xF1;
 
-struct UVMTypeDef {
-    const char* Str;
-    uint8_t Id;
-};
+// These are not real UVM types but are helper types for global / static
+// variables. Range 0xB0 - 0xBF is reserved for BASS types
+constexpr uint8_t BASS_TYPE_STRING = 0xB0;
 
-// This array is used to lookup valid type defs
-const static std::array<UVMTypeDef, 6> UVM_TYPE_DEFS = {
-    UVMTypeDef{"i8", UVM_TYPE_I8},   UVMTypeDef{"i16", UVM_TYPE_I16},
-    UVMTypeDef{"i32", UVM_TYPE_I32}, UVMTypeDef{"i64", UVM_TYPE_I64},
-    UVMTypeDef{"f32", UVM_TYPE_F32}, UVMTypeDef{"f64", UVM_TYPE_F64},
+// This map is used to lookup valid type defs
+const static std::map<std::string, uint8_t> UVM_TYPE_DEFS{
+    {"i8", UVM_TYPE_I8},
+    {"i16", UVM_TYPE_I16},
+    {"i32", UVM_TYPE_I32},
+    {"i64", UVM_TYPE_I64},
+    {"f32", UVM_TYPE_F32},
+    {"f64", UVM_TYPE_F64},
+    // BASS types
+    {"str", BASS_TYPE_STRING},
 };
 
 // Flags that are used to encode the instructions
