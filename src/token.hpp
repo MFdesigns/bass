@@ -35,6 +35,9 @@ enum class TokenType {
     FLOAT_NUMBER,
     EOL,
     END_OF_FILE,
+    COLON,
+    EQUALS_SIGN,
+    STRING,
 };
 
 struct Token {

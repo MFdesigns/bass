@@ -153,7 +153,7 @@ void Scanner::skipLine() {
 
 /**
  * Scans a word which starts with [a-zA-Z] contains [a-zA-Z_0-9]+ terminated by
- * [ \t{\n\r,\]+\-*]
+ * [ \t{\n\r,\]+\-*:=]
  * @param outSize The word size
  * @return On valid word returns true otherwise false
  */
@@ -171,7 +171,7 @@ bool Scanner::scanWord(uint32_t& outSize) {
 
     while (peek != '\t' && peek != ' ' && peek != '{' && peek != '\n' &&
            peek != '\r' && peek != ',' && peek != ']' && peek != '+' &&
-           peek != '-' && peek != '*') {
+           peek != '-' && peek != '*' && peek != ':' && peek != '=') {
         c = eatChar();
         if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_' ||
             (c >= '0' && c <= '9')) {
@@ -184,6 +184,39 @@ bool Scanner::scanWord(uint32_t& outSize) {
     }
 
     return validWord;
+}
+
+/**
+ * Scans a string declared by "..."
+ * @param outSize [out] Size of the string
+ * @return On valid string returns true otherwise false
+ */
+bool Scanner::scanString(uint32_t& outSize) {
+    bool validString = true;
+
+    // Get first char and peek
+    char c = ' ';
+    Src->getChar(Cursor, c);
+    char peek = peekChar();
+    outSize++;
+
+    // String cannot not be on multiple lines
+    bool strClosed = false;
+    while (!strClosed) {
+        c = eatChar();
+        if (c == '\n') {
+            validString = false;
+            break;
+        }
+
+        if (c == '"') {
+            strClosed = true;
+        }
+        outSize++;
+        peek = peekChar();
+    }
+
+    return validString;
 }
 
 /**
@@ -375,6 +408,28 @@ bool Scanner::scanSource() {
                 Tokens->emplace_back(TokenType::RIGHT_CURLY_BRACKET, Cursor, 1,
                                      CursorLineRow, CursorLineColumn, 0);
                 break;
+            case ':':
+                Tokens->emplace_back(TokenType::COLON, Cursor, 1, CursorLineRow,
+                                     CursorLineColumn, 0);
+                break;
+            case '=':
+                Tokens->emplace_back(TokenType::EQUALS_SIGN, Cursor, 1,
+                                     CursorLineRow, CursorLineColumn, 0);
+                break;
+            case '"': {
+                uint32_t strSize = 0;
+                bool validString = scanString(strSize);
+                if (!validString) {
+                    printError(Src, tokPos, strSize, tokLineRow, tokLineColumn,
+                               "Unexpected character in string");
+                    skipLine();
+                    currChar = eatChar();
+                    continue;
+                }
+                Tokens->emplace_back(TokenType::STRING, Cursor, strSize,
+                                     CursorLineRow, CursorLineColumn, 0);
+                break;
+            }
             case '@': {
                 // Start at 1 to include @ sign
                 uint32_t labelSize = 1;

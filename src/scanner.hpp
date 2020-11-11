@@ -47,6 +47,7 @@ class Scanner {
     void skipChar(uint32_t count);
     void skipLine();
     bool scanWord(uint32_t& outSize);
+    bool scanString(uint32_t& outSize);
     bool scanNumber(uint32_t& outSize, bool& isFloat);
     static TokenType identifyWord(std::string& word, uint8_t* tag);
     static bool isRegister(std::string& token, uint8_t& tag);
