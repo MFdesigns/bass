@@ -254,9 +254,7 @@ bool Scanner::scanNumber(uint32_t& outSize, bool& isFloat) {
 
     } else {
         // Parse dec or float number until terminated by [ \n\t,\r\]]
-        while (peek != 0 && peek != ' ' && peek != '\n' && peek != '\t' &&
-               peek != ',' && peek != '\r' && peek != ']') {
-
+        while (validNumber) {
             // Valid dec or float number [0-9]+
             if (c >= '0' && c <= '9') {
                 outSize++;
@@ -272,6 +270,11 @@ bool Scanner::scanNumber(uint32_t& outSize, bool& isFloat) {
                 outSize++;
             } else {
                 validNumber = false;
+                break;
+            }
+
+            if (peek == 0 || peek == ' ' || peek == '\n' || peek == '\t' ||
+                peek == ',' || peek == '\r' || peek == ']') {
                 break;
             }
             c = eatChar();
