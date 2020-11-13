@@ -71,7 +71,7 @@ bool Assembler::assemble() {
         return false;
     }
 
-    Global glob{0, 0, 0};
+    Global glob{0, 0, 0, 0};
     std::vector<LabelDefLookup> labelDefs{};
 
     Parser parse{InstrDefs, Src, &Tokens, &glob, &labelDefs};

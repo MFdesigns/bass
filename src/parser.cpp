@@ -110,7 +110,8 @@ bool Parser::parseRegOffset(Instruction* instr) {
     Token* t = eatToken();
 
     if (t->Type == TokenType::REGISTER_DEFINITION) {
-        regOff->Base = new RegisterId(t->Index, t->LineRow, t->LineCol, t->Tag);
+        regOff->Base =
+            new RegisterId(t->Index, t->Size, t->LineRow, t->LineCol, t->Tag);
         t = eatToken();
     } else {
         printTokenError("Expected register in register offset", *t);
@@ -118,9 +119,9 @@ bool Parser::parseRegOffset(Instruction* instr) {
     }
 
     if (t->Type == TokenType::RIGHT_SQUARE_BRACKET) {
-        regOff->Position = t->Index;
-        regOff->LineNumber = t->LineRow;
-        regOff->LineColumn = t->LineCol;
+        regOff->Index = t->Index;
+        regOff->LineRow = t->LineRow;
+        regOff->LineCol = t->LineCol;
         regOff->Layout = RO_LAYOUT_IR;
         instr->Params.push_back(regOff);
         return true;
@@ -154,9 +155,9 @@ bool Parser::parseRegOffset(Instruction* instr) {
             regOff->Immediate.U32 = (uint32_t)num;
 
             // TODO: Register offset position is not correct
-            regOff->Position = t->Index;
-            regOff->LineNumber = t->LineRow;
-            regOff->LineColumn = t->LineCol;
+            regOff->Index = t->Index;
+            regOff->LineRow = t->LineRow;
+            regOff->LineCol = t->LineCol;
             regOff->Layout |= RO_LAYOUT_IR_INT;
             instr->Params.push_back(regOff);
             t = eatToken();
@@ -169,7 +170,7 @@ bool Parser::parseRegOffset(Instruction* instr) {
         }
     } else if (t->Type == TokenType::REGISTER_DEFINITION) {
         regOff->Offset =
-            new RegisterId(t->Index, t->LineRow, t->LineCol, t->Tag);
+            new RegisterId(t->Index, t->Size, t->LineRow, t->LineCol, t->Tag);
         t = eatToken();
         if (t->Type == TokenType::ASTERISK) {
             t = eatToken();
@@ -195,9 +196,9 @@ bool Parser::parseRegOffset(Instruction* instr) {
 
         if (t->Type == TokenType::RIGHT_SQUARE_BRACKET) {
             // TODO: Register offset position is not correct
-            regOff->Position = t->Index;
-            regOff->LineNumber = t->LineRow;
-            regOff->LineColumn = t->LineCol;
+            regOff->Index = t->Index;
+            regOff->LineRow = t->LineRow;
+            regOff->LineCol = t->LineCol;
             regOff->Layout |= RO_LAYOUT_IR_IR_INT;
             instr->Params.push_back(regOff);
         } else {
@@ -239,8 +240,8 @@ bool Parser::buildAST() {
             case TokenType::INSTRUCTION: {
                 std::string instrName;
                 Src->getSubStr(t->Index, t->Size, instrName);
-                instr = new Instruction(t->Index, t->LineRow, t->LineCol,
-                                        instrName, t->Tag);
+                instr = new Instruction(t->Index, t->Size, t->LineRow,
+                                        t->LineCol, instrName, t->Tag);
                 Glob->Body.push_back(instr);
 
                 Token* peek = peekToken();
@@ -258,8 +259,8 @@ bool Parser::buildAST() {
                 std::string labelName;
                 // + 1 because @ sign at start of label should be ignored
                 Src->getSubStr(t->Index + 1, t->Size - 1, labelName);
-                LabelDef* label =
-                    new LabelDef(t->Index, t->LineRow, t->LineCol, labelName);
+                LabelDef* label = new LabelDef(t->Index, t->Size, t->LineRow,
+                                               t->LineCol, labelName);
                 Glob->Body.push_back(label);
 
                 Token* peek = peekToken();
@@ -278,8 +279,8 @@ bool Parser::buildAST() {
         } break;
         case ParseState::INSTR_BODY: {
             if (t->Type == TokenType::TYPE_INFO) {
-                TypeInfo* typeInfo =
-                    new TypeInfo(t->Index, t->LineRow, t->LineCol, t->Tag);
+                TypeInfo* typeInfo = new TypeInfo(t->Index, t->Size, t->LineRow,
+                                                  t->LineCol, t->Tag);
                 instr->Params.push_back(typeInfo);
                 t = eatToken();
             }
@@ -290,13 +291,13 @@ bool Parser::buildAST() {
                 case TokenType::IDENTIFIER: {
                     std::string idName;
                     Src->getSubStr(t->Index, t->Size, idName);
-                    Identifier* id = new Identifier(t->Index, t->LineRow,
-                                                    t->LineCol, idName);
+                    Identifier* id = new Identifier(
+                        t->Index, t->Size, t->LineRow, t->LineCol, idName);
                     instr->Params.push_back(id);
                 } break;
                 case TokenType::REGISTER_DEFINITION: {
-                    RegisterId* reg = new RegisterId(t->Index, t->LineRow,
-                                                     t->LineCol, t->Tag);
+                    RegisterId* reg = new RegisterId(
+                        t->Index, t->Size, t->LineRow, t->LineCol, t->Tag);
                     instr->Params.push_back(reg);
                 } break;
                 case TokenType::LEFT_SQUARE_BRACKET: {
@@ -310,15 +311,15 @@ bool Parser::buildAST() {
                     Src->getSubStr(t->Index, t->Size, numStr);
                     int64_t num = strToInt(numStr);
                     IntegerNumber* iNum = new IntegerNumber(
-                        t->Index, t->LineRow, t->LineCol, num);
+                        t->Index, t->Size, t->LineRow, t->LineCol, num);
                     instr->Params.push_back(iNum);
                 } break;
                 case TokenType::FLOAT_NUMBER: {
                     std::string floatStr;
                     Src->getSubStr(t->Index, t->Size, floatStr);
                     double num = std::atof(floatStr.c_str());
-                    FloatNumber* iNum =
-                        new FloatNumber(t->Index, t->LineRow, t->LineCol, num);
+                    FloatNumber* iNum = new FloatNumber(
+                        t->Index, t->Size, t->LineRow, t->LineCol, num);
                     instr->Params.push_back(iNum);
                 } break;
                 default:
@@ -364,9 +365,8 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
             instr->EncodingFlags = paramNode->ParamList->Flags;
             return true;
         } else {
-            printError(Src, instr->Position, instr->Name.size(),
-                       instr->LineNumber, instr->LineColumn,
-                       "Expected parameters found none");
+            printError(Src, instr->Index, instr->Name.size(), instr->LineRow,
+                       instr->LineCol, "Expected parameters found none");
             return false;
         }
     }
@@ -392,8 +392,8 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
                     typeInfo->DataType != UVM_TYPE_I16 &&
                     typeInfo->DataType != UVM_TYPE_I32 &&
                     typeInfo->DataType != UVM_TYPE_I64) {
-                    printError(Src, typeInfo->Position, 3, typeInfo->LineNumber,
-                               typeInfo->LineColumn,
+                    printError(Src, typeInfo->Index, 3, typeInfo->LineRow,
+                               typeInfo->LineCol,
                                "Expected int type found float type");
                     break;
                 }
@@ -407,8 +407,8 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
                 TypeInfo* typeInfo = dynamic_cast<TypeInfo*>(astNode);
                 if (typeInfo->DataType != UVM_TYPE_F32 &&
                     typeInfo->DataType != UVM_TYPE_F64) {
-                    printError(Src, typeInfo->Position, 3, typeInfo->LineNumber,
-                               typeInfo->LineColumn,
+                    printError(Src, typeInfo->Index, 3, typeInfo->LineRow,
+                               typeInfo->LineCol,
                                "Expected float type found int type");
                     break;
                 }
@@ -430,8 +430,8 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
                 RegisterId* regId = dynamic_cast<RegisterId*>(astNode);
                 // TODO: What about flag register ?
                 if (regId->Id < 0x1 || regId->Id > 0x15) {
-                    printError(Src, regId->Position, 3, regId->LineNumber,
-                               regId->LineColumn, "Expected integer register");
+                    printError(Src, regId->Index, 3, regId->LineRow,
+                               regId->LineCol, "Expected integer register");
                     break;
                 }
                 nextNode = &currentNode->Children[n];
@@ -442,8 +442,8 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
                 }
                 RegisterId* regId = dynamic_cast<RegisterId*>(astNode);
                 if (regId->Id < 0x16 || regId->Id > 0x26) {
-                    printError(Src, regId->Position, 3, regId->LineNumber,
-                               regId->LineColumn, "Expected float register");
+                    printError(Src, regId->Index, 3, regId->LineRow,
+                               regId->LineCol, "Expected float register");
                     break;
                 }
                 nextNode = &currentNode->Children[n];
@@ -496,8 +496,8 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
     }
 
     if (paramList == nullptr) {
-        printError(Src, instr->Position, instr->Name.size(), instr->LineNumber,
-                   instr->LineColumn,
+        printError(Src, instr->Index, instr->Name.size(), instr->LineRow,
+                   instr->LineCol,
                    "Error no matching parameter list found for instruction");
         return false;
     }
@@ -577,8 +577,8 @@ bool Parser::typeCheck() {
             // If function is a redefinition continue with parsing the function
             // body anyway
             if (labelRedef) {
-                printError(Src, label->Position, label->Name.size(),
-                           label->LineNumber, label->LineColumn,
+                printError(Src, label->Index, label->Name.size(),
+                           label->LineRow, label->LineCol,
                            "Label is already defined");
                 typeCheckError = true;
             }
@@ -603,8 +603,8 @@ bool Parser::typeCheck() {
         }
 
         if (!foundDef) {
-            printError(Src, labelRef->Position, labelRef->Name.size(),
-                       labelRef->LineNumber, labelRef->LineColumn,
+            printError(Src, labelRef->Index, labelRef->Name.size(),
+                       labelRef->LineRow, labelRef->LineCol,
                        "Unresolved label");
             typeCheckError = true;
         }

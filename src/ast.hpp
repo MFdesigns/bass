@@ -58,29 +58,39 @@ enum class IdentifierType {
 class ASTNode {
   public:
     ASTNode(ASTType type);
-    ASTNode(ASTType type, uint32_t pos, uint32_t lineNr, uint32_t lineCol);
+    ASTNode(ASTType type,
+            uint32_t pos,
+            uint32_t size,
+            uint32_t lineNr,
+            uint32_t lineCol);
     ASTType Type;
-    uint32_t Position;
-    uint32_t LineNumber;
-    uint32_t LineColumn;
+    uint32_t Index;
+    uint32_t Size;
+    uint32_t LineRow;
+    uint32_t LineCol;
     virtual ~ASTNode() = default;
 };
 
 class Global : public ASTNode {
   public:
-    Global(uint32_t pos, uint32_t lineNr, uint32_t lineCol);
+    Global(uint32_t pos, uint32_t size, uint32_t lineNr, uint32_t lineCol);
     std::vector<ASTNode*> Body;
 };
 
 class LabelDef : public ASTNode {
   public:
-    LabelDef(uint32_t pos, uint32_t lineNr, uint32_t lineCol, std::string name);
+    LabelDef(uint32_t pos,
+             uint32_t size,
+             uint32_t lineNr,
+             uint32_t lineCol,
+             std::string name);
     std::string Name;
 };
 
 class Identifier : public ASTNode {
   public:
     Identifier(uint32_t pos,
+               uint32_t size,
                uint32_t lineNr,
                uint32_t lineCol,
                std::string name);
@@ -90,6 +100,7 @@ class Identifier : public ASTNode {
 class Instruction : public ASTNode {
   public:
     Instruction(uint32_t pos,
+                uint32_t size,
                 uint32_t lineNr,
                 uint32_t lineCol,
                 std::string name,
@@ -105,7 +116,11 @@ class Instruction : public ASTNode {
 
 class FloatNumber : public ASTNode {
   public:
-    FloatNumber(uint32_t pos, uint32_t lineNr, uint32_t lineCol, double num);
+    FloatNumber(uint32_t pos,
+                uint32_t size,
+                uint32_t lineNr,
+                uint32_t lineCol,
+                double num);
     double Num;
     uint8_t DataType;
 };
@@ -113,14 +128,22 @@ class FloatNumber : public ASTNode {
 class IntegerNumber : public ASTNode {
   public:
     IntegerNumber();
-    IntegerNumber(uint32_t pos, uint32_t lineNr, uint32_t lineCol, int64_t num);
+    IntegerNumber(uint32_t pos,
+                  uint32_t size,
+                  uint32_t lineNr,
+                  uint32_t lineCol,
+                  int64_t num);
     int64_t Num;
     uint8_t DataType;
 };
 
 class RegisterId : public ASTNode {
   public:
-    RegisterId(uint32_t pos, uint32_t lineNr, uint32_t lineCol, uint8_t id);
+    RegisterId(uint32_t pos,
+               uint32_t size,
+               uint32_t lineNr,
+               uint32_t lineCol,
+               uint8_t id);
     uint8_t Id;
 };
 
@@ -133,6 +156,7 @@ class RegisterOffset : public ASTNode {
   public:
     RegisterOffset();
     RegisterOffset(uint32_t pos,
+                   uint32_t size,
                    uint32_t lineNr,
                    uint32_t lineCol,
                    uint8_t layout,
@@ -146,7 +170,11 @@ class RegisterOffset : public ASTNode {
 
 class TypeInfo : public ASTNode {
   public:
-    TypeInfo(uint32_t pos, uint32_t lineNr, uint32_t lineCol, uint8_t dataType);
+    TypeInfo(uint32_t pos,
+             uint32_t size,
+             uint32_t lineNr,
+             uint32_t lineCol,
+             uint8_t dataType);
     uint8_t DataType;
 };
 

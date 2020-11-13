@@ -18,65 +18,70 @@
 
 ASTNode::ASTNode(ASTType type) : Type(type) {}
 
-ASTNode::ASTNode(ASTType type, uint32_t pos, uint32_t lineNr, uint32_t lineCol)
-    : Type(type), Position(pos), LineNumber(lineNr), LineColumn(lineCol) {}
+ASTNode::ASTNode(ASTType type,
+                 uint32_t pos,
+                 uint32_t size,
+                 uint32_t lineNr,
+                 uint32_t lineCol)
+    : Type(type), Index(pos), LineRow(lineNr), LineCol(lineCol) {}
 
-Global::Global(uint32_t pos, uint32_t lineNr, uint32_t lineCol)
-    : ASTNode(ASTType::GLOBAL, pos, lineNr, lineCol) {}
+Global::Global(uint32_t pos, uint32_t size, uint32_t lineNr, uint32_t lineCol)
+    : ASTNode(ASTType::GLOBAL, pos, size, lineNr, lineCol) {}
 
 LabelDef::LabelDef(uint32_t pos,
+                   uint32_t size,
                    uint32_t lineNr,
                    uint32_t lineCol,
                    std::string name)
-    : ASTNode(ASTType::LABEL_DEFINITION, pos, lineNr, lineCol), Name(name) {}
+    : ASTNode(ASTType::LABEL_DEFINITION, pos, size, lineNr, lineCol),
+      Name(name) {}
 
 Identifier::Identifier(uint32_t pos,
+                       uint32_t size,
                        uint32_t lineNr,
                        uint32_t lineCol,
                        std::string name)
-    : ASTNode(ASTType::IDENTIFIER, pos, lineNr, lineCol), Name(name) {}
+    : ASTNode(ASTType::IDENTIFIER, pos, size, lineNr, lineCol), Name(name) {}
 
 Instruction::Instruction(uint32_t pos,
+                         uint32_t size,
                          uint32_t lineNr,
                          uint32_t lineCol,
                          std::string name,
                          uint32_t asmDefIndex)
-    : ASTNode(ASTType::INSTRUCTION, pos, lineNr, lineCol), Name(name),
+    : ASTNode(ASTType::INSTRUCTION, pos, size, lineNr, lineCol), Name(name),
       ASMDefIndex(asmDefIndex) {}
 
-FloatNumber::FloatNumber(uint32_t pos,
-                         uint32_t lineNr,
-                         uint32_t lineCol,
-                         double num)
-    : ASTNode(ASTType::FLOAT_NUMBER, pos, lineNr, lineCol), Num(num) {}
+FloatNumber::FloatNumber(
+    uint32_t pos, uint32_t size, uint32_t lineNr, uint32_t lineCol, double num)
+    : ASTNode(ASTType::FLOAT_NUMBER, pos, size, lineNr, lineCol), Num(num) {}
 
 IntegerNumber::IntegerNumber() : ASTNode(ASTType::INTEGER_NUMBER) {}
 
-IntegerNumber::IntegerNumber(uint32_t pos,
-                             uint32_t lineNr,
-                             uint32_t lineCol,
-                             int64_t num)
-    : ASTNode(ASTType::INTEGER_NUMBER, pos, lineNr, lineCol), Num(num) {}
+IntegerNumber::IntegerNumber(
+    uint32_t pos, uint32_t size, uint32_t lineNr, uint32_t lineCol, int64_t num)
+    : ASTNode(ASTType::INTEGER_NUMBER, pos, size, lineNr, lineCol), Num(num) {}
 
-RegisterId::RegisterId(uint32_t pos,
-                       uint32_t lineNr,
-                       uint32_t lineCol,
-                       uint8_t id)
-    : ASTNode(ASTType::REGISTER_ID, pos, lineNr, lineCol), Id(id) {}
+RegisterId::RegisterId(
+    uint32_t pos, uint32_t size, uint32_t lineNr, uint32_t lineCol, uint8_t id)
+    : ASTNode(ASTType::REGISTER_ID, pos, size, lineNr, lineCol), Id(id) {}
 
 RegisterOffset::RegisterOffset() : ASTNode(ASTType::REGISTER_OFFSET){};
 
 RegisterOffset::RegisterOffset(uint32_t pos,
+                               uint32_t size,
                                uint32_t lineNr,
                                uint32_t lineCol,
                                uint8_t layout,
                                RegisterId* base,
                                RegisterId* offset)
-    : ASTNode(ASTType::REGISTER_OFFSET, pos, lineNr, lineCol), Layout(layout),
-      Base(base), Offset(offset) {}
+    : ASTNode(ASTType::REGISTER_OFFSET, pos, size, lineNr, lineCol),
+      Layout(layout), Base(base), Offset(offset) {}
 
 TypeInfo::TypeInfo(uint32_t pos,
+                   uint32_t size,
                    uint32_t lineNr,
                    uint32_t lineCol,
                    uint8_t dataType)
-    : ASTNode(ASTType::TYPE_INFO, pos, lineNr, lineCol), DataType(dataType) {}
+    : ASTNode(ASTType::TYPE_INFO, pos, size, lineNr, lineCol),
+      DataType(dataType) {}
