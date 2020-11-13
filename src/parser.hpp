@@ -27,7 +27,7 @@ class Parser {
   public:
     Parser(std::vector<InstrDefNode>* instrDefs,
            SourceFile* src,
-           std::vector<Token>* tokens,
+           const std::vector<Token>* tokens,
            Global* global,
            std::vector<LabelDefLookup>* funcDefs);
     bool buildAST();
@@ -39,19 +39,17 @@ class Parser {
     /** Non owning pointer to instruction definitons */
     std::vector<InstrDefNode>* InstrDefs = nullptr;
     /** Non owning vector of token */
-    std::vector<Token>* Tokens = nullptr;
+    const std::vector<Token>* Tokens = nullptr;
     /** Vector of non owning pointers to function declarations */
     std::vector<LabelDefLookup>* LabelDefs = nullptr;
     /** Non owning pointer to global AST node */
     Global* Glob;
     SourceFile* Src;
-    uint8_t getUVMType(Token* tok);
-    uint8_t getRegisterTypeFromName(std::string& regName);
     int64_t strToInt(std::string& str);
     Token* eatToken();
-    bool peekToken(Token** tok);
+    Token* peekToken();
+    void printTokenError(const char* msg, Token& tok);
     bool parseRegOffset(Instruction* instr);
-    void throwError(const char* msg, Token& tok);
     bool typeCheckInstrParams(Instruction* instr,
                               std::vector<Identifier*>& labelRefs);
 };

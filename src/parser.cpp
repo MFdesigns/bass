@@ -17,6 +17,7 @@
 #include "parser.hpp"
 #include "asm/asm.hpp"
 #include "asm/encoding.hpp"
+#include "cli.hpp"
 #include <iomanip>
 #include <iostream>
 
@@ -30,33 +31,17 @@
  */
 Parser::Parser(std::vector<InstrDefNode>* instrDefs,
                SourceFile* src,
-               std::vector<Token>* tokens,
+               const std::vector<Token>* tokens,
                Global* global,
                std::vector<LabelDefLookup>* funcDefs)
     : InstrDefs(instrDefs), Src(src), Tokens(tokens), Glob(global),
       LabelDefs(funcDefs){};
 
-uint8_t Parser::getUVMType(Token* tok) {
-    std::string typeName;
-    Src->getSubStr(tok->Index, tok->Size, typeName);
-
-    uint8_t type = 0;
-    if (typeName == "i8") {
-        type = UVM_TYPE_I8;
-    } else if (typeName == "i16") {
-        type = UVM_TYPE_I16;
-    } else if (typeName == "i32") {
-        type = UVM_TYPE_I32;
-    } else if (typeName == "i64") {
-        type = UVM_TYPE_I64;
-    } else if (typeName == "f32") {
-        type = UVM_TYPE_F32;
-    } else if (typeName == "f64") {
-        type = UVM_TYPE_F64;
-    }
-    return type;
-}
-
+/**
+ * Converts a string to an integer
+ * @param str String to be converted
+ * @return Integer of string
+ */
 int64_t Parser::strToInt(std::string& str) {
     int64_t num = 0;
     int32_t base = 10;
@@ -66,71 +51,58 @@ int64_t Parser::strToInt(std::string& str) {
         }
     }
     // Warning: this only works with unsigned numbers and  does not handle
-    // sigend numbers
+    // signed numbers
     num = std::stoull(str, 0, base);
     return num;
 }
 
-uint8_t Parser::getRegisterTypeFromName(std::string& regName) {
-    uint8_t id = 0;
-    if (regName == "ip") {
-        id = 1;
-    } else if (regName == "bp") {
-        id = 3;
-    } else if (regName == "sp") {
-        id = 2;
-    } else {
-        uint8_t base = 0;
-        if (regName[0] == 'r') {
-            base = 0x5;
-        } else if (regName[0] == 'f') {
-            base = 0x16;
-        }
-
-        const char* num = regName.c_str();
-        uint32_t offset = std::atoi(&num[1]);
-        id = base + offset;
-    }
-    return id;
-}
-
+/**
+ * Returns token at current Cursor and increases the Cursor
+ * @return Pointer to current Token, if Cursor is at the end will always return
+ * the last token
+ */
 Token* Parser::eatToken() {
-    Token* tok = nullptr;
+    const Token* tok = nullptr;
     if (Cursor < Tokens->size()) {
         // Because Cursor starts at index 0 return current token before
         // increasing the cursor
         tok = &(*Tokens)[Cursor];
         Cursor++;
     } else {
-        tok = &(*Tokens)[Tokens->size() - 1];
+        tok = &Tokens->back();
     }
-    return tok;
+    return const_cast<Token*>(tok);
 }
 
-bool Parser::peekToken(Token** tok) {
-    if (Cursor < Tokens->size()) {
-        *tok = &(*Tokens)[Cursor];
-        return true;
+/**
+ * Return the next Token without increasing the Cursor
+ * @return Pointer to current Token, if Cursor is at the end will always return
+ * the last token
+ */
+Token* Parser::peekToken() {
+    const Token* tok = nullptr;
+    if (Cursor >= Tokens->size()) {
+        tok = &Tokens->back();
+    } else {
+        tok = &(*Tokens)[Cursor];
     }
-    return false;
+    return const_cast<Token*>(tok);
 }
 
-void Parser::throwError(const char* msg, Token& tok) {
-    std::string line;
-    uint32_t lineIndex = 0;
-    Src->getLine(tok.Index, line, lineIndex);
-    std::string lineNr = std::to_string(lineIndex);
-
-    uint32_t errOffset = tok.Index - lineIndex;
-
-    std::cout << "[Parser Error] " << msg << " at Ln " << tok.LineRow
-              << ", Col " << tok.LineCol << '\n'
-              << "  " << tok.LineRow << " | " << line << '\n'
-              << std::setw(2 + lineNr.size()) << std::setfill(' ') << " |"
-              << std::setw(errOffset + 1) << std::setfill(' ') << ' '
-              << std::setw(tok.Size) << std::setfill('~') << '~' << '\n';
+/**
+ * Prints an error to the console
+ * @param msg Pointer to error message string
+ * @param tok Token to be displayed
+ */
+void Parser::printTokenError(const char* msg, Token& tok) {
+    printError(Src, tok.Index, tok.Size, tok.LineRow, tok.LineCol, msg);
 }
 
+/**
+ * Parses a register offset and appends it to the parent instruction node
+ * @param instr Pointer to parent instruction node
+ * @return On valid register offset returns true otherwise false
+ */
 bool Parser::parseRegOffset(Instruction* instr) {
     constexpr uint8_t RO_LAYOUT_NEG = 0b1000'0000;
     constexpr uint8_t RO_LAYOUT_POS = 0b0000'0000;
@@ -138,13 +110,10 @@ bool Parser::parseRegOffset(Instruction* instr) {
     Token* t = eatToken();
 
     if (t->Type == TokenType::REGISTER_DEFINITION) {
-        std::string regName;
-        Src->getSubStr(t->Index, t->Size, regName);
-        uint8_t regId = getRegisterTypeFromName(regName);
-        regOff->Base = new RegisterId(t->Index, t->LineRow, t->LineCol, regId);
+        regOff->Base = new RegisterId(t->Index, t->LineRow, t->LineCol, t->Tag);
         t = eatToken();
     } else {
-        throwError("Expected register in register offset", *t);
+        printTokenError("Expected register in register offset", *t);
         return false;
     }
 
@@ -160,16 +129,15 @@ bool Parser::parseRegOffset(Instruction* instr) {
     } else if (t->Type == TokenType::MINUS_SIGN) {
         regOff->Layout |= RO_LAYOUT_NEG;
     } else {
-        throwError("Unexpected token in register offset", *t);
+        printTokenError("Unexpected token in register offset", *t);
         return false;
     }
 
     t = eatToken();
     // <iR> +/- <i32>
     if (t->Type == TokenType::INTEGER_NUMBER) {
-        Token* peek;
-        bool eof = !peekToken(&peek);
-        if (!eof && peek->Type == TokenType::RIGHT_SQUARE_BRACKET) {
+        Token* peek = peekToken();
+        if (peek != nullptr && peek->Type == TokenType::RIGHT_SQUARE_BRACKET) {
             // Get int string and convert to an int
             std::string numStr;
             Src->getSubStr(t->Index, t->Size, numStr);
@@ -178,7 +146,7 @@ bool Parser::parseRegOffset(Instruction* instr) {
             // <iR> + <i32> expects integer to have a maximum size of 32 bits
             // Check if the requirement is meet otherwise throw error
             if (num >> 32 != 0) {
-                throwError(
+                printTokenError(
                     "Register offset immediate does not fit into 32-bit value",
                     *t);
                 return false;
@@ -193,22 +161,21 @@ bool Parser::parseRegOffset(Instruction* instr) {
             instr->Params.push_back(regOff);
             t = eatToken();
         } else {
-            throwError("Expected closing bracket after immediate offset inside "
-                       "register offset ]",
-                       *t);
+            printTokenError(
+                "Expected closing bracket after immediate offset inside "
+                "register offset ]",
+                *t);
             return false;
         }
     } else if (t->Type == TokenType::REGISTER_DEFINITION) {
-        std::string regName;
-        Src->getSubStr(t->Index, t->Size, regName);
-        uint8_t regIdType = getRegisterTypeFromName(regName);
         regOff->Offset =
-            new RegisterId(t->Index, t->LineRow, t->LineCol, regIdType);
+            new RegisterId(t->Index, t->LineRow, t->LineCol, t->Tag);
         t = eatToken();
         if (t->Type == TokenType::ASTERISK) {
             t = eatToken();
         } else {
-            throwError("Expected * after offset inside register offset", *t);
+            printTokenError("Expected * after offset inside register offset",
+                            *t);
             return false;
         }
 
@@ -219,7 +186,7 @@ bool Parser::parseRegOffset(Instruction* instr) {
         // <iR> +/- <iR> * <i16> expects integer to have a maximum size of 16
         // bits Check if the requirement is meet otherwise throw error
         if (num >> 16 != 0) {
-            throwError(
+            printTokenError(
                 "Register offset immediate does not fit into 16-bit value", *t);
             return false;
         }
@@ -234,17 +201,21 @@ bool Parser::parseRegOffset(Instruction* instr) {
             regOff->Layout |= RO_LAYOUT_IR_IR_INT;
             instr->Params.push_back(regOff);
         } else {
-            throwError("Expectd closing bracket after factor", *t);
+            printTokenError("Expectd closing bracket after factor", *t);
             return false;
         }
 
     } else {
-        throwError("Expected register or int number as offset", *t);
+        printTokenError("Expected register or int number as offset", *t);
         return false;
     }
     return true;
 }
 
+/**
+ * Builds the abstract syntax tree
+ * @return On valid input returns true otherwise false
+ */
 bool Parser::buildAST() {
     ParseState state = ParseState::GLOBAL_SCOPE;
     // Pointer to currently parsed function or instruction
@@ -272,10 +243,10 @@ bool Parser::buildAST() {
                                         instrName, t->Tag);
                 Glob->Body.push_back(instr);
 
-                Token* peek = nullptr;
-                bool eof = !peekToken(&peek);
-                if (eof) {
-                    throwError("Unexpected end of file after instruction", *t);
+                Token* peek = peekToken();
+                if (peek->Type == TokenType::END_OF_FILE) {
+                    printTokenError("Unexpected end of file after instruction",
+                                    *t);
                     return false;
                 }
 
@@ -291,25 +262,24 @@ bool Parser::buildAST() {
                     new LabelDef(t->Index, t->LineRow, t->LineCol, labelName);
                 Glob->Body.push_back(label);
 
-                Token* peek = nullptr;
-                bool eof = !peekToken(&peek);
-                if (eof || peek->Type != TokenType::EOL) {
-                    throwError("Expected new line after label definition", *t);
+                Token* peek = peekToken();
+                if (peek->Type != TokenType::EOL) {
+                    printTokenError("Expected new line after label definition",
+                                    *t);
                     return false;
                 }
                 t = eatToken(); // TODO: BUG ?
             } break;
             default:
-                throwError("Unexpected token in function body", *t);
+                printTokenError("Unexpected token in function body", *t);
                 return false;
                 break;
             }
         } break;
         case ParseState::INSTR_BODY: {
             if (t->Type == TokenType::TYPE_INFO) {
-                uint8_t typeUVMType = getUVMType(t);
                 TypeInfo* typeInfo =
-                    new TypeInfo(t->Index, t->LineRow, t->LineCol, typeUVMType);
+                    new TypeInfo(t->Index, t->LineRow, t->LineCol, t->Tag);
                 instr->Params.push_back(typeInfo);
                 t = eatToken();
             }
@@ -325,11 +295,8 @@ bool Parser::buildAST() {
                     instr->Params.push_back(id);
                 } break;
                 case TokenType::REGISTER_DEFINITION: {
-                    std::string regName;
-                    Src->getSubStr(t->Index, t->Size, regName);
-                    uint8_t regType = getRegisterTypeFromName(regName);
                     RegisterId* reg = new RegisterId(t->Index, t->LineRow,
-                                                     t->LineCol, regType);
+                                                     t->LineCol, t->Tag);
                     instr->Params.push_back(reg);
                 } break;
                 case TokenType::LEFT_SQUARE_BRACKET: {
@@ -355,7 +322,7 @@ bool Parser::buildAST() {
                     instr->Params.push_back(iNum);
                 } break;
                 default:
-                    throwError("Expected parameter", *t);
+                    printTokenError("Expected parameter", *t);
                     return false;
                     break;
                 }
@@ -386,7 +353,7 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
     // Get top node of instruction paramters tree
     InstrDefNode* paramNode = &(*InstrDefs)[instr->ASMDefIndex];
 
-    // Check if instr has no parameters and see if definiton accpets no
+    // Check if instr has no parameters and see if definiton accepts no
     // paramters. Important: this assumes that an instruction definiton either
     // has 0 parameters or only paramter definitons with at least 1. It cannot
     // have both
@@ -397,8 +364,9 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
             instr->EncodingFlags = paramNode->ParamList->Flags;
             return true;
         } else {
-            std::cout
-                << "[Type Checker] Error: expected paramters found none\n";
+            printError(Src, instr->Position, instr->Name.size(),
+                       instr->LineNumber, instr->LineColumn,
+                       "Expected parameters found none");
             return false;
         }
     }
@@ -424,8 +392,9 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
                     typeInfo->DataType != UVM_TYPE_I16 &&
                     typeInfo->DataType != UVM_TYPE_I32 &&
                     typeInfo->DataType != UVM_TYPE_I64) {
-                    std::cout << "[Type Checker] Error: Expected int type "
-                                 "found float type\n";
+                    printError(Src, typeInfo->Position, 3, typeInfo->LineNumber,
+                               typeInfo->LineColumn,
+                               "Expected int type found float type");
                     break;
                 }
                 type = typeInfo;
@@ -438,8 +407,9 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
                 TypeInfo* typeInfo = dynamic_cast<TypeInfo*>(astNode);
                 if (typeInfo->DataType != UVM_TYPE_F32 &&
                     typeInfo->DataType != UVM_TYPE_F64) {
-                    std::cout << "[Type Checker] Error: Expected float type "
-                                 "found int type\n";
+                    printError(Src, typeInfo->Position, 3, typeInfo->LineNumber,
+                               typeInfo->LineColumn,
+                               "Expected float type found int type");
                     break;
                 }
                 type = typeInfo;
@@ -458,10 +428,10 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
                     break;
                 }
                 RegisterId* regId = dynamic_cast<RegisterId*>(astNode);
-                // s: What about flag register ?
-                if (regId->Id < 0x1 && regId->Id > 0x15) {
-                    std::cout
-                        << "[Type Checker] Error: Expected integer register\n";
+                // TODO: What about flag register ?
+                if (regId->Id < 0x1 || regId->Id > 0x15) {
+                    printError(Src, regId->Position, 3, regId->LineNumber,
+                               regId->LineColumn, "Expected integer register");
                     break;
                 }
                 nextNode = &currentNode->Children[n];
@@ -471,9 +441,9 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
                     break;
                 }
                 RegisterId* regId = dynamic_cast<RegisterId*>(astNode);
-                if (regId->Id < 0x16 && regId->Id > 0x26) {
-                    std::cout
-                        << "[Type Checker] Error: Expected integer register\n";
+                if (regId->Id < 0x16 || regId->Id > 0x26) {
+                    printError(Src, regId->Position, 3, regId->LineNumber,
+                               regId->LineColumn, "Expected float register");
                     break;
                 }
                 nextNode = &currentNode->Children[n];
@@ -526,9 +496,9 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
     }
 
     if (paramList == nullptr) {
-        std::cout << "Error no matching parameter list found for instruction "
-                  << instr->Name << " at Ln " << instr->LineNumber << " Col "
-                  << instr->LineColumn << '\n';
+        printError(Src, instr->Position, instr->Name.size(), instr->LineNumber,
+                   instr->LineColumn,
+                   "Error no matching parameter list found for instruction");
         return false;
     }
 
@@ -607,8 +577,10 @@ bool Parser::typeCheck() {
             // If function is a redefinition continue with parsing the function
             // body anyway
             if (labelRedef) {
+                printError(Src, label->Position, label->Name.size(),
+                           label->LineNumber, label->LineColumn,
+                           "Label is already defined");
                 typeCheckError = true;
-                std::cout << "[Type Checker] Error: label is already defined\n";
             }
             LabelDefs->push_back(LabelDefLookup{label, 0});
         } else if (globElem->Type == ASTType::INSTRUCTION) {
@@ -631,8 +603,9 @@ bool Parser::typeCheck() {
         }
 
         if (!foundDef) {
-            std::cout << "[Type Checker] Error: unresolved label '"
-                      << labelRef->Name << "'\n";
+            printError(Src, labelRef->Position, labelRef->Name.size(),
+                       labelRef->LineNumber, labelRef->LineColumn,
+                       "Unresolved label");
             typeCheckError = true;
         }
     }
