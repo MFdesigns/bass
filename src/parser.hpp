@@ -28,7 +28,7 @@ class Parser {
     Parser(std::vector<InstrDefNode>* instrDefs,
            SourceFile* src,
            const std::vector<Token>* tokens,
-           Global* global,
+           ASTFileNode* fileNode,
            std::vector<LabelDefLookup>* funcDefs);
     bool buildAST();
     bool typeCheck();
@@ -42,14 +42,20 @@ class Parser {
     const std::vector<Token>* Tokens = nullptr;
     /** Vector of non owning pointers to function declarations */
     std::vector<LabelDefLookup>* LabelDefs = nullptr;
-    /** Non owning pointer to global AST node */
-    Global* Glob;
+    /** Non owning pointer to file node node */
+    ASTFileNode* FileNode;
+    /** Non owning pointer to source file */
     SourceFile* Src;
     int64_t strToInt(std::string& str);
     Token* eatToken();
     Token* peekToken();
+    void skipLine();
     void printTokenError(const char* msg, Token& tok);
     bool parseRegOffset(Instruction* instr);
+    bool parseSectionVars(ASTSection* sec);
+    bool parseSectionCode();
+    bool parseSecGlobal();
+    bool parseSecCode();
     bool typeCheckInstrParams(Instruction* instr,
                               std::vector<Identifier*>& labelRefs);
 };

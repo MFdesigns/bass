@@ -66,7 +66,7 @@ struct Section {
 
 class Generator {
   public:
-    Generator(Global* ast,
+    Generator(ASTFileNode* ast,
               std::filesystem::path* p,
               std::vector<LabelDefLookup>* funcDefs);
     ~Generator();
@@ -74,7 +74,7 @@ class Generator {
 
   private:
     /** Non owning pointer to Global */
-    Global* AST = nullptr;
+    ASTFileNode* AST = nullptr;
     /** Non owning pointer to source file */
     std::filesystem::path* FilePath = nullptr;
     /** Non owning pointer to function defintions created by parser stage */

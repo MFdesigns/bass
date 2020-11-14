@@ -31,6 +31,15 @@ enum class ASTType {
     REGISTER_ID,
     REGISTER_OFFSET,
     TYPE_INFO,
+    SECTION,
+    VARIABLE,
+    STRING,
+};
+
+enum class ASTSectionType {
+    STATIC,
+    GLOBAL,
+    CODE,
 };
 
 // clang-format off
@@ -45,15 +54,6 @@ enum class ASTType {
 constexpr uint8_t RO_LAYOUT_IR = 0x4F;        // <iR>
 constexpr uint8_t RO_LAYOUT_IR_INT = 0x2F;    // <iR> + <i32>
 constexpr uint8_t RO_LAYOUT_IR_IR_INT = 0x1F; // <iR> + <iR> * <i16>
-
-/**
- * This is used to tell the generator what the identifier referes to
- */
-enum class IdentifierType {
-    NONE = 0,
-    FUNC_REF,
-    LABEL_REF,
-};
 
 class ASTNode {
   public:
@@ -71,9 +71,16 @@ class ASTNode {
     virtual ~ASTNode() = default;
 };
 
-class Global : public ASTNode {
+class ASTSection : public ASTNode {
   public:
-    Global(uint32_t pos, uint32_t size, uint32_t lineNr, uint32_t lineCol);
+    ASTSection(uint32_t pos,
+               uint32_t size,
+               uint32_t lineNr,
+               uint32_t lineCol,
+               std::string name,
+               ASTSectionType secType);
+    ASTSectionType SecType;
+    std::string Name;
     std::vector<ASTNode*> Body;
 };
 
@@ -114,25 +121,25 @@ class Instruction : public ASTNode {
     InstrParamList* ParamList = nullptr;
 };
 
-class FloatNumber : public ASTNode {
+class ASTFloat : public ASTNode {
   public:
-    FloatNumber(uint32_t pos,
-                uint32_t size,
-                uint32_t lineNr,
-                uint32_t lineCol,
-                double num);
+    ASTFloat(uint32_t pos,
+             uint32_t size,
+             uint32_t lineNr,
+             uint32_t lineCol,
+             double num);
     double Num;
     uint8_t DataType;
 };
 
-class IntegerNumber : public ASTNode {
+class ASTInt : public ASTNode {
   public:
-    IntegerNumber();
-    IntegerNumber(uint32_t pos,
-                  uint32_t size,
-                  uint32_t lineNr,
-                  uint32_t lineCol,
-                  int64_t num);
+    ASTInt();
+    ASTInt(uint32_t pos,
+           uint32_t size,
+           uint32_t lineNr,
+           uint32_t lineCol,
+           int64_t num);
     int64_t Num;
     uint8_t DataType;
 };
@@ -166,6 +173,7 @@ class RegisterOffset : public ASTNode {
     RegisterId* Base = nullptr;
     RegisterId* Offset = nullptr;
     ROInt Immediate;
+    Identifier* Var = nullptr;
 };
 
 class TypeInfo : public ASTNode {
@@ -176,6 +184,38 @@ class TypeInfo : public ASTNode {
              uint32_t lineCol,
              uint8_t dataType);
     uint8_t DataType;
+};
+
+class ASTVariable : public ASTNode {
+  public:
+    ASTVariable(uint32_t pos,
+                uint32_t size,
+                uint32_t lineNr,
+                uint32_t lineCol,
+                Identifier* id,
+                TypeInfo* dataType,
+                ASTNode* val);
+    Identifier* Id;
+    TypeInfo* DataType;
+    ASTNode* Val;
+};
+
+class ASTString : public ASTNode {
+  public:
+    ASTString(uint32_t pos,
+              uint32_t size,
+              uint32_t lineNr,
+              uint32_t lineCol,
+              std::string val);
+    std::string Val;
+};
+
+class ASTFileNode {
+  public:
+    ASTFileNode() = default;
+    ASTSection* SecStatic = nullptr;
+    ASTSection* SecGlobal = nullptr;
+    ASTSection* SecCode = nullptr;
 };
 
 /**

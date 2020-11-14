@@ -28,7 +28,7 @@ SecNameString::SecNameString(std::string str, vAddr addr)
  * @param p Pointer to output file path
  * @param funcDefs Pointer to array of FuncDefLookup
  */
-Generator::Generator(Global* ast,
+Generator::Generator(ASTFileNode* ast,
                      std::filesystem::path* p,
                      std::vector<LabelDefLookup>* funcDefs)
     : AST(ast), FilePath(p), LabelDefs(funcDefs) {
@@ -158,7 +158,7 @@ void Generator::emitInstruction(Instruction* instr) {
             instrSize += 8;
         } break;
         case ASTType::FLOAT_NUMBER: {
-            FloatNumber* num = dynamic_cast<FloatNumber*>(param);
+            ASTFloat* num = dynamic_cast<ASTFloat*>(param);
             if (num->DataType == UVM_TYPE_F32) {
                 float typedNum = (float)num->Num;
                 std::memcpy(&temp[instrSize], &typedNum, 4);
@@ -169,7 +169,7 @@ void Generator::emitInstruction(Instruction* instr) {
             }
         } break;
         case ASTType::INTEGER_NUMBER: {
-            IntegerNumber* num = dynamic_cast<IntegerNumber*>(param);
+            ASTInt* num = dynamic_cast<ASTInt*>(param);
             if (num->DataType == UVM_TYPE_I8) {
                 uint8_t typedNum = (uint8_t)num->Num;
                 temp[instrSize] = typedNum;
@@ -219,7 +219,7 @@ void Generator::emitInstruction(Instruction* instr) {
 void Generator::createByteCode() {
     // Set the current Cursor as start of code section
     SecCode->StartAddr = Cursor;
-    for (auto& globElem : AST->Body) {
+    for (auto& globElem : AST->SecCode->Body) {
         switch (globElem->Type) {
         case ASTType::LABEL_DEFINITION: {
             LabelDef* label = dynamic_cast<LabelDef*>(globElem);

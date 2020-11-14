@@ -32,9 +32,9 @@
 Parser::Parser(std::vector<InstrDefNode>* instrDefs,
                SourceFile* src,
                const std::vector<Token>* tokens,
-               Global* global,
+               ASTFileNode* fileNode,
                std::vector<LabelDefLookup>* funcDefs)
-    : InstrDefs(instrDefs), Src(src), Tokens(tokens), Glob(global),
+    : InstrDefs(instrDefs), Src(src), Tokens(tokens), FileNode(fileNode),
       LabelDefs(funcDefs){};
 
 /**
@@ -90,6 +90,16 @@ Token* Parser::peekToken() {
 }
 
 /**
+ * Skips token input until new line
+ */
+void Parser::skipLine() {
+    Token* tok = eatToken();
+    while (tok->Type != TokenType::END_OF_FILE && tok->Type != TokenType::EOL) {
+        tok = eatToken();
+    }
+}
+
+/**
  * Prints an error to the console
  * @param msg Pointer to error message string
  * @param tok Token to be displayed
@@ -108,6 +118,24 @@ bool Parser::parseRegOffset(Instruction* instr) {
     constexpr uint8_t RO_LAYOUT_POS = 0b0000'0000;
     RegisterOffset* regOff = new RegisterOffset();
     Token* t = eatToken();
+
+    // Check if register offset is a variable offset e.g "[staticVar]"
+    if (t->Type == TokenType::IDENTIFIER) {
+        std::string idString;
+        Src->getSubStr(t->Index, t->Size, idString);
+        regOff->Var =
+            new Identifier(t->Index, t->Size, t->LineRow, t->LineCol, idString);
+
+        t = eatToken();
+        // Closing bracket
+        if (t->Type != TokenType::RIGHT_SQUARE_BRACKET) {
+            printTokenError(
+                "Expected closing bracket ] after variable reference", *t);
+            return false;
+        }
+        instr->Params.push_back(regOff);
+        return true;
+    }
 
     if (t->Type == TokenType::REGISTER_DEFINITION) {
         regOff->Base =
@@ -214,10 +242,111 @@ bool Parser::parseRegOffset(Instruction* instr) {
 }
 
 /**
- * Builds the abstract syntax tree
+ * Builds AST for static section
+ * @param sec Parent section
  * @return On valid input returns true otherwise false
  */
-bool Parser::buildAST() {
+bool Parser::parseSectionVars(ASTSection* sec) {
+    bool validSec = true;
+    Token* tok = eatToken();
+
+    // Ignore end of line
+    if (tok->Type == TokenType::EOL) {
+        tok = eatToken();
+    }
+
+    while (tok->Type != TokenType::RIGHT_CURLY_BRACKET) {
+        Identifier* id = nullptr;
+        TypeInfo* typeInfo = nullptr;
+        ASTNode* val = nullptr;
+
+        // Variable name
+        if (tok->Type != TokenType::IDENTIFIER) {
+            printTokenError("Expected static variable identifier", *tok);
+            validSec = false;
+            break;
+        }
+
+        std::string idName;
+        Src->getSubStr(tok->Index, tok->Size, idName);
+        id = new Identifier(tok->Index, tok->Size, tok->LineRow, tok->LineCol,
+                            idName);
+
+        // Colon
+        tok = eatToken();
+        if (tok->Type != TokenType::COLON) {
+            printTokenError("Expected colon after variable identifier", *tok);
+            validSec = false;
+            break;
+        }
+
+        // Type
+        tok = eatToken();
+        if (tok->Type != TokenType::TYPE_INFO) {
+            printTokenError("Expected type info in variable declaration", *tok);
+            validSec = false;
+            break;
+        }
+        typeInfo = new TypeInfo(tok->Index, tok->Size, tok->LineRow,
+                                tok->LineCol, tok->Tag);
+
+        // Equals
+        tok = eatToken();
+        if (tok->Type != TokenType::EQUALS_SIGN) {
+            printTokenError(
+                "Expected equals sign after type info in variable declaration",
+                *tok);
+            validSec = false;
+            break;
+        }
+
+        tok = eatToken();
+        std::string tokString;
+        Src->getSubStr(tok->Index, tok->Size, tokString);
+
+        if (tok->Type == TokenType::STRING) {
+            ASTString* str = new ASTString(tok->Index, tok->Size, tok->LineRow,
+                                           tok->LineCol, tokString);
+            val = dynamic_cast<ASTNode*>(str);
+        } else if (tok->Type == TokenType::INTEGER_NUMBER) {
+            uint64_t intVal = strToInt(tokString);
+            ASTInt* integer = new ASTInt(tok->Index, tok->Size, tok->LineRow,
+                                         tok->LineCol, intVal);
+            val = dynamic_cast<ASTNode*>(integer);
+        } else if (tok->Type == TokenType::FLOAT_NUMBER) {
+            double floatVal = std::stod(tokString);
+            ASTFloat* fl = new ASTFloat(tok->Index, tok->Size, tok->LineRow,
+                                        tok->LineCol, floatVal);
+            val = dynamic_cast<ASTNode*>(fl);
+        } else {
+            printTokenError(
+                "Expected string, float or integer as variable value", *tok);
+            validSec = false;
+            break;
+        }
+
+        tok = eatToken();
+        if (tok->Type != TokenType::EOL) {
+            printTokenError("Expected new line after variable declaration",
+                            *tok);
+            validSec = false;
+            break;
+        }
+
+        uint32_t varSize = val->Index + val->Size - id->Index;
+        sec->Body.push_back(new ASTVariable(id->Index, varSize, id->LineRow,
+                                            id->LineCol, id, typeInfo, val));
+        tok = eatToken();
+    }
+
+    return validSec;
+}
+
+/**
+ * Parses the code section
+ * @return On valid input returns true otherwise false
+ */
+bool Parser::parseSectionCode() {
     ParseState state = ParseState::GLOBAL_SCOPE;
     // Pointer to currently parsed function or instruction
     Instruction* instr = nullptr;
@@ -231,7 +360,8 @@ bool Parser::buildAST() {
                 t = eatToken();
             }
 
-            if (t->Type == TokenType::END_OF_FILE) {
+            if (t->Type == TokenType::END_OF_FILE ||
+                t->Type == TokenType::RIGHT_CURLY_BRACKET) {
                 state = ParseState::END;
                 continue;
             }
@@ -242,7 +372,7 @@ bool Parser::buildAST() {
                 Src->getSubStr(t->Index, t->Size, instrName);
                 instr = new Instruction(t->Index, t->Size, t->LineRow,
                                         t->LineCol, instrName, t->Tag);
-                Glob->Body.push_back(instr);
+                FileNode->SecCode->Body.push_back(instr);
 
                 Token* peek = peekToken();
                 if (peek->Type == TokenType::END_OF_FILE) {
@@ -261,7 +391,7 @@ bool Parser::buildAST() {
                 Src->getSubStr(t->Index + 1, t->Size - 1, labelName);
                 LabelDef* label = new LabelDef(t->Index, t->Size, t->LineRow,
                                                t->LineCol, labelName);
-                Glob->Body.push_back(label);
+                FileNode->SecCode->Body.push_back(label);
 
                 Token* peek = peekToken();
                 if (peek->Type != TokenType::EOL) {
@@ -310,16 +440,16 @@ bool Parser::buildAST() {
                     std::string numStr;
                     Src->getSubStr(t->Index, t->Size, numStr);
                     int64_t num = strToInt(numStr);
-                    IntegerNumber* iNum = new IntegerNumber(
-                        t->Index, t->Size, t->LineRow, t->LineCol, num);
+                    ASTInt* iNum = new ASTInt(t->Index, t->Size, t->LineRow,
+                                              t->LineCol, num);
                     instr->Params.push_back(iNum);
                 } break;
                 case TokenType::FLOAT_NUMBER: {
                     std::string floatStr;
                     Src->getSubStr(t->Index, t->Size, floatStr);
                     double num = std::atof(floatStr.c_str());
-                    FloatNumber* iNum = new FloatNumber(
-                        t->Index, t->Size, t->LineRow, t->LineCol, num);
+                    ASTFloat* iNum = new ASTFloat(t->Index, t->Size, t->LineRow,
+                                                  t->LineCol, num);
                     instr->Params.push_back(iNum);
                 } break;
                 default:
@@ -340,6 +470,78 @@ bool Parser::buildAST() {
         }
     }
     return true;
+}
+
+/**
+ * Builds the abstract syntax tree
+ * @return On valid input returns true otherwise false
+ */
+bool Parser::buildAST() {
+    bool validInput = true;
+    Token* currentToken = eatToken();
+    while (currentToken->Type != TokenType::END_OF_FILE) {
+        // Ignore EOL
+        if (currentToken->Type == TokenType::EOL) {
+            currentToken = eatToken();
+            continue;
+        }
+
+        // Section identifier
+        if (currentToken->Type != TokenType::IDENTIFIER) {
+            printTokenError("Expected section identifier in global scope",
+                            *currentToken);
+            validInput = false;
+            break;
+        }
+        Token* secToken = currentToken;
+
+        // identifer {
+        currentToken = eatToken();
+        if (currentToken->Type != TokenType::LEFT_CURLY_BRACKET) {
+            printTokenError("Expected { after section identifier",
+                            *currentToken);
+            validInput = false;
+            break;
+        }
+
+        std::string secName;
+        Src->getSubStr(secToken->Index, secToken->Size, secName);
+
+        // TODO: Check for section redefiniton
+        if (secName == "static") {
+            FileNode->SecStatic = new ASTSection(
+                secToken->Index, secToken->Size, secToken->LineRow,
+                secToken->LineCol, secName, ASTSectionType::STATIC);
+            if (!parseSectionVars(FileNode->SecStatic)) {
+                validInput = false;
+                break;
+            }
+        } else if (secName == "global") {
+            FileNode->SecGlobal = new ASTSection(
+                secToken->Index, secToken->Size, secToken->LineRow,
+                secToken->LineCol, secName, ASTSectionType::GLOBAL);
+            if (!parseSectionVars(FileNode->SecGlobal)) {
+                validInput = false;
+                break;
+            }
+        } else if (secName == "code") {
+            FileNode->SecCode = new ASTSection(
+                secToken->Index, secToken->Size, secToken->LineRow,
+                secToken->LineCol, secName, ASTSectionType::CODE);
+            if (!parseSectionCode()) {
+                validInput = false;
+                break;
+            }
+        } else {
+            printTokenError("Unknown section type", *secToken);
+            validInput = false;
+            break;
+        }
+
+        currentToken = eatToken();
+    }
+
+    return validInput;
 }
 
 /**
@@ -458,7 +660,7 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
                 if (astNode->Type != ASTType::INTEGER_NUMBER) {
                     break;
                 }
-                IntegerNumber* num = dynamic_cast<IntegerNumber*>(astNode);
+                ASTInt* num = dynamic_cast<ASTInt*>(astNode);
                 num->DataType = type->DataType;
                 nextNode = &currentNode->Children[n];
             } break;
@@ -467,7 +669,7 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
                     break;
                 }
 
-                FloatNumber* num = dynamic_cast<FloatNumber*>(astNode);
+                ASTFloat* num = dynamic_cast<ASTFloat*>(astNode);
                 num->DataType = type->DataType;
                 nextNode = &currentNode->Children[n];
             } break;
@@ -476,7 +678,7 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
                     break;
                 }
 
-                IntegerNumber* num = dynamic_cast<IntegerNumber*>(astNode);
+                ASTInt* num = dynamic_cast<ASTInt*>(astNode);
                 // syscall args are always 1 byte
                 num->DataType = UVM_TYPE_I8;
                 nextNode = &currentNode->Children[n];
@@ -530,15 +732,15 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
 bool Parser::typeCheck() {
     // Check if Global AST node has no children which means the main function is
     // missing for sure
-    if (Glob->Body.size() == 0) {
+    if (FileNode->SecCode->Body.size() == 0) {
         std::cout << "[Type Checker] Missing main label\n";
         return false;
     }
 
     // Try to find main entry point
     LabelDef* mainEntry = nullptr;
-    for (uint32_t i = 0; i < Glob->Body.size(); i++) {
-        ASTNode* node = Glob->Body[i];
+    for (uint32_t i = 0; i < FileNode->SecCode->Body.size(); i++) {
+        ASTNode* node = FileNode->SecCode->Body[i];
         if (node->Type == ASTType::LABEL_DEFINITION) {
             LabelDef* label = dynamic_cast<LabelDef*>(node);
             if (label->Name == "main") {
@@ -561,7 +763,7 @@ bool Parser::typeCheck() {
     bool typeCheckError = false;
     // Type check complete AST. This assumes that the build AST generated a
     // valid AST
-    for (const auto& globElem : Glob->Body) {
+    for (const auto& globElem : FileNode->SecCode->Body) {
         if (globElem->Type == ASTType::LABEL_DEFINITION) {
             LabelDef* label = dynamic_cast<LabelDef*>(globElem);
 

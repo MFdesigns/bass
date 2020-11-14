@@ -25,8 +25,24 @@ ASTNode::ASTNode(ASTType type,
                  uint32_t lineCol)
     : Type(type), Index(pos), LineRow(lineNr), LineCol(lineCol) {}
 
-Global::Global(uint32_t pos, uint32_t size, uint32_t lineNr, uint32_t lineCol)
-    : ASTNode(ASTType::GLOBAL, pos, size, lineNr, lineCol) {}
+ASTSection::ASTSection(uint32_t pos,
+                       uint32_t size,
+                       uint32_t lineNr,
+                       uint32_t lineCol,
+                       std::string name,
+                       ASTSectionType secType)
+    : ASTNode(ASTType::VARIABLE, pos, size, lineNr, lineCol), Name(name),
+      SecType(secType) {}
+
+ASTVariable::ASTVariable(uint32_t pos,
+                         uint32_t size,
+                         uint32_t lineNr,
+                         uint32_t lineCol,
+                         Identifier* id,
+                         TypeInfo* dataType,
+                         ASTNode* val)
+    : ASTNode(ASTType::SECTION, pos, size, lineNr, lineCol), Id(id),
+      DataType(dataType), Val(val) {}
 
 LabelDef::LabelDef(uint32_t pos,
                    uint32_t size,
@@ -52,13 +68,13 @@ Instruction::Instruction(uint32_t pos,
     : ASTNode(ASTType::INSTRUCTION, pos, size, lineNr, lineCol), Name(name),
       ASMDefIndex(asmDefIndex) {}
 
-FloatNumber::FloatNumber(
+ASTFloat::ASTFloat(
     uint32_t pos, uint32_t size, uint32_t lineNr, uint32_t lineCol, double num)
     : ASTNode(ASTType::FLOAT_NUMBER, pos, size, lineNr, lineCol), Num(num) {}
 
-IntegerNumber::IntegerNumber() : ASTNode(ASTType::INTEGER_NUMBER) {}
+ASTInt::ASTInt() : ASTNode(ASTType::INTEGER_NUMBER) {}
 
-IntegerNumber::IntegerNumber(
+ASTInt::ASTInt(
     uint32_t pos, uint32_t size, uint32_t lineNr, uint32_t lineCol, int64_t num)
     : ASTNode(ASTType::INTEGER_NUMBER, pos, size, lineNr, lineCol), Num(num) {}
 
@@ -85,3 +101,10 @@ TypeInfo::TypeInfo(uint32_t pos,
                    uint8_t dataType)
     : ASTNode(ASTType::TYPE_INFO, pos, size, lineNr, lineCol),
       DataType(dataType) {}
+
+ASTString::ASTString(uint32_t pos,
+                     uint32_t size,
+                     uint32_t lineNr,
+                     uint32_t lineCol,
+                     std::string val)
+    : ASTNode(ASTType::STRING, pos, size, lineNr, lineCol), Val(val) {}
