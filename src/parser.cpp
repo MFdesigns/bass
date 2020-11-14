@@ -333,7 +333,7 @@ bool Parser::parseSectionVars(ASTSection* sec) {
             break;
         }
 
-        uint32_t varSize = val->Index + val->Size - id->Index;
+        uint32_t varSize = (val->Index + val->Size) - id->Index;
         sec->Body.push_back(new ASTVariable(id->Index, varSize, id->LineRow,
                                             id->LineCol, id, typeInfo, val));
         tok = eatToken();
@@ -726,10 +726,56 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
 }
 
 /**
+ * Checks if type and values of global and static variables match
+ * @return On valid input return true otherwise false
+ */
+bool Parser::typeCheckVars() {
+    // Create vector contain both static and global vars
+    std::vector<ASTNode*> vars;
+    vars.insert(vars.begin(), FileNode->SecStatic->Body.begin(),
+                FileNode->SecStatic->Body.end());
+    vars.insert(vars.end(), FileNode->SecGlobal->Body.begin(),
+                FileNode->SecGlobal->Body.end());
+
+    // Check for variable redefinitons
+    for (ASTNode* node : vars) {
+        ASTVariable* var = dynamic_cast<ASTVariable*>(node);
+
+        // Look if variable name has already been defined in the range of
+        // already checked vars
+        bool found = false;
+        uint32_t i = 0;
+        ASTVariable* refVar = dynamic_cast<ASTVariable*>(vars[i]);
+        while (refVar != var && i < vars.size()) {
+            if (var->Id->Name == refVar->Id->Name) {
+                found = true;
+                break;
+            }
+            i++;
+            refVar = dynamic_cast<ASTVariable*>(vars[i]);
+        }
+
+        if (found) {
+            printError(Src, var->Index, var->Size, var->LineRow, var->LineCol,
+                       "Variable redefiniton");
+            continue;
+        }
+    }
+
+    return true;
+}
+
+/**
  * Performs a complete type checking pass over the AST
  * @return Returns true if no errors occured otherwise false
  */
 bool Parser::typeCheck() {
+    // Tracks if an error occured while type checking
+    bool typeCheckError = false;
+    if (!typeCheckVars()) {
+        typeCheckError = true;
+    }
+
     // Check if Global AST node has no children which means the main function is
     // missing for sure
     if (FileNode->SecCode->Body.size() == 0) {
@@ -759,8 +805,6 @@ bool Parser::typeCheck() {
     // identifiers aswell as localy defined label definitions
     std::vector<Identifier*> labelRefs;
 
-    // Tracks if an error occured while type checking
-    bool typeCheckError = false;
     // Type check complete AST. This assumes that the build AST generated a
     // valid AST
     for (const auto& globElem : FileNode->SecCode->Body) {

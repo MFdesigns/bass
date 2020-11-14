@@ -23,7 +23,7 @@ ASTNode::ASTNode(ASTType type,
                  uint32_t size,
                  uint32_t lineNr,
                  uint32_t lineCol)
-    : Type(type), Index(pos), LineRow(lineNr), LineCol(lineCol) {}
+    : Type(type), Index(pos), Size(size), LineRow(lineNr), LineCol(lineCol) {}
 
 ASTSection::ASTSection(uint32_t pos,
                        uint32_t size,

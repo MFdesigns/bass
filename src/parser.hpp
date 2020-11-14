@@ -58,4 +58,5 @@ class Parser {
     bool parseSecCode();
     bool typeCheckInstrParams(Instruction* instr,
                               std::vector<Identifier*>& labelRefs);
+    bool typeCheckVars();
 };
