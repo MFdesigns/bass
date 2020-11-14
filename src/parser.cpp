@@ -730,6 +730,7 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
  * @return On valid input return true otherwise false
  */
 bool Parser::typeCheckVars() {
+    bool valid = true;
     // Create vector contain both static and global vars
     std::vector<ASTNode*> vars;
     vars.insert(vars.begin(), FileNode->SecStatic->Body.begin(),
@@ -758,11 +759,12 @@ bool Parser::typeCheckVars() {
         if (found) {
             printError(Src, var->Index, var->Size, var->LineRow, var->LineCol,
                        "Variable redefiniton");
+            valid = false;
             continue;
         }
     }
 
-    return true;
+    return valid;
 }
 
 /**
