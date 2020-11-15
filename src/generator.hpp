@@ -50,6 +50,17 @@ struct ResolvableLabelRef {
     LabelDefLookup* LabelDef = nullptr;
 };
 
+/**
+ * This keeps track of variable position in memory so that the generator can
+ * resolve references to variables in the code section
+ */
+struct VarDeclaration {
+    /** Virtual address to variable in memory */
+    uint64_t VAddr = 0;
+    /** The variable name which is at this position */
+    Identifier* Id = nullptr;
+};
+
 struct SecNameString {
     SecNameString(std::string str, vAddr addr);
     std::string Str;
@@ -81,8 +92,13 @@ class Generator {
     std::vector<LabelDefLookup>* LabelDefs = nullptr;
     /** Vector of label references which have to be resolved */
     std::vector<ResolvableLabelRef> ResLabelRefs;
+    /** This vector keeps track of where at which address variables are placed
+     */
+    std::vector<VarDeclaration> VarDecls;
     FileBuffer* Buffer = nullptr;
     Section* SecNameTable = nullptr;
+    Section* SecStatic = nullptr;
+    Section* SecGlobal = nullptr;
     Section* SecCode = nullptr;
     std::vector<SecNameString> SecNameStrings;
     uint64_t Cursor = 0;
@@ -96,4 +112,6 @@ class Generator {
     void resolveLabelRefs();
     void fillSectionTable();
     void writeFile();
+    void encodeSectionVars(ASTSection* srcSec, Section* owningSec);
+    void resolveVariableOffset(RegisterOffset* ro);
 };

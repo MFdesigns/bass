@@ -51,6 +51,7 @@ enum class ASTSectionType {
 // =========== OR ==============
 //                  -> 1010 1111  = <iR> - <iR> * <i16>
 // clang-format on
+constexpr uint8_t RO_LAYOUT_NEGATIVE = 0b1000'0000;
 constexpr uint8_t RO_LAYOUT_IR = 0x4F;        // <iR>
 constexpr uint8_t RO_LAYOUT_IR_INT = 0x2F;    // <iR> + <i32>
 constexpr uint8_t RO_LAYOUT_IR_IR_INT = 0x1F; // <iR> + <iR> * <i16>
