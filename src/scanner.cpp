@@ -429,8 +429,8 @@ bool Scanner::scanSource() {
                     currChar = eatChar();
                     continue;
                 }
-                Tokens->emplace_back(TokenType::STRING, Cursor, strSize,
-                                     CursorLineRow, CursorLineColumn, 0);
+                Tokens->emplace_back(TokenType::STRING, tokPos, strSize,
+                                     tokLineRow, tokLineColumn, 0);
                 break;
             }
             case '@': {
