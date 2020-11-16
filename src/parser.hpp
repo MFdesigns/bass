@@ -51,6 +51,7 @@ class Parser {
     Token* peekToken();
     void skipLine();
     void printTokenError(const char* msg, Token& tok);
+    void parseString(std::string& inStr, std::string& outStr);
     bool parseRegOffset(Instruction* instr);
     bool parseSectionVars(ASTSection* sec);
     bool parseSectionCode();

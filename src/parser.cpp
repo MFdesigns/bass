@@ -109,6 +109,36 @@ void Parser::printTokenError(const char* msg, Token& tok) {
 }
 
 /**
+ * Parses a string and replaces escaped characters and removes surrounding
+ * quotes
+ * @param inStr String containing the input
+ * @param outStr [out] String containing the parsed output
+ */
+void Parser::parseString(std::string& inStr, std::string& outStr) {
+    // If string only consists of "" (two double quotes) string is empty so just
+    // return
+    if (inStr.size() == 2) {
+        return;
+    }
+
+    // Cursor starts at 1 to skip the first quote and size - 1 in loop to ignore
+    // end quote
+    size_t cursor = 1;
+    while (cursor < inStr.size() - 1) {
+        char c = inStr[cursor];
+        char p = inStr[cursor + 1];
+
+        if (c == '\\' && p == 'n') {
+            c = '\n';
+            cursor++;
+        }
+
+        outStr.push_back(c);
+        cursor++;
+    }
+}
+
+/**
  * Parses a register offset and appends it to the parent instruction node
  * @param instr Pointer to parent instruction node
  * @return On valid register offset returns true otherwise false
@@ -305,8 +335,10 @@ bool Parser::parseSectionVars(ASTSection* sec) {
         Src->getSubStr(tok->Index, tok->Size, tokString);
 
         if (tok->Type == TokenType::STRING) {
+            std::string parsedStr;
+            parseString(tokString, parsedStr);
             ASTString* str = new ASTString(tok->Index, tok->Size, tok->LineRow,
-                                           tok->LineCol, tokString);
+                                           tok->LineCol, parsedStr);
             val = dynamic_cast<ASTNode*>(str);
         } else if (tok->Type == TokenType::INTEGER_NUMBER) {
             uint64_t intVal = strToInt(tokString);
