@@ -1215,7 +1215,7 @@
             "paramList": [
                 {
                     "opcode": "0xD1",
-                    "encodeType": false,
+                    "encodeType": true,
                     "params": [
                         "iT",
                         "iReg",
@@ -1225,7 +1225,7 @@
                 },
                 {
                     "opcode": "0xD2",
-                    "encodeType": false,
+                    "encodeType": true,
                     "params": [
                         "iT",
                         "iReg",
@@ -1235,7 +1235,7 @@
                 },
                 {
                     "opcode": "0xD3",
-                    "encodeType": false,
+                    "encodeType": true,
                     "params": [
                         "iT",
                         "RO",
@@ -1245,7 +1245,7 @@
                 },
                 {
                     "opcode": "0xD4",
-                    "encodeType": false,
+                    "encodeType": true,
                     "params": [
                         "iT",
                         "RO",
