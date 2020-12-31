@@ -69,8 +69,16 @@ void printError(SourceFile* src,
               << std::setw(rowStringMargin) << std::setfill(' ') << ' ' << "|"
               << std::setfill(' ') << std::setw(TAB) << ' ';
 
+    // If error offset (width of whitespace before the ~~~~ line begins) is zero
+    // then don't output any whitespace because the way that the setw method
+    // works is it always outputs the leading char atleast once resulting in one
+    // space leading the ~~~~ line
+    //
     // Set font color to white and print the error indicator ~~~~~~
-    std::cerr << FG_RED << std::setfill(' ') << std::setw(errOffset) << ' '
-              << std::setfill('~') << std::setw(size) << '~' << "\n\n"
+    if (errOffset != 0) {
+        std::cerr << FG_RED << std::setfill(' ') << std::setw(errOffset) << ' ';
+    }
+
+    std::cerr << std::setfill('~') << std::setw(size) << '~' << "\n\n"
               << FG_WHITE;
 }

@@ -85,8 +85,15 @@ void printError(SourceFile* src,
 
     // Set font color to white and print the error indicator ~~~~~~
     SetConsoleTextAttribute(handle, FG_RED);
-    std::cerr << std::setfill(' ') << std::setw(errOffset) << ' '
-              << std::setfill('~') << std::setw(size) << '~' << "\n\n";
+
+    // If error offset (width of whitespace before the ~~~~ line begins) is zero
+    // then don't output any whitespace because the way that the setw method
+    // works is it always outputs the leading char atleast once resulting in one
+    // space leading the ~~~~ line
+    if (errOffset != 0) {
+        std::cerr << std::setfill(' ') << std::setw(errOffset) << ' ';
+    }
+    std::cerr << std::setfill('~') << std::setw(size) << '~' << "\n\n";
 
     // Reset font color to white
     SetConsoleTextAttribute(handle, FG_WHITE);
