@@ -28,6 +28,9 @@ enum class RegisterType {
     FLOAT,
 };
 
+bool strToInt(std::string& str, uint64_t& num);
+bool strToFP(std::string& str, double& num);
+
 class Parser {
   public:
     Parser(std::vector<InstrDefNode>* instrDefs,
@@ -51,7 +54,6 @@ class Parser {
     ASTFileNode* FileNode;
     /** Non owning pointer to source file */
     SourceFile* Src;
-    int64_t strToInt(std::string& str);
     Token* eatToken();
     Token* peekToken();
     void skipLine();
@@ -60,8 +62,6 @@ class Parser {
     bool parseRegOffset(Instruction* instr);
     bool parseSectionVars(ASTSection* sec);
     bool parseSectionCode();
-    bool parseSecGlobal();
-    bool parseSecCode();
     bool typeCheckInstrParams(Instruction* instr,
                               std::vector<Identifier*>& labelRefs);
     bool typeCheckVars();

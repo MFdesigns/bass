@@ -34,6 +34,101 @@ RegisterType getRegisterType(uint8_t regId) {
 }
 
 /**
+ * Checks if an integer can fit into given type assmuning that type is less than
+ * 64-bit
+ * @param num Integer to be checked
+ * @param type Target type
+ * @return On success returns true otherwise false
+ */
+bool checkIntWidth(uint64_t num, uint8_t type) {
+    bool fits = false;
+    switch (type) {
+    case UVM_TYPE_I8:
+        if (num <= 0xFF) {
+            fits = true;
+        }
+        break;
+    case UVM_TYPE_I16:
+        if (num <= 0xFFFF) {
+            fits = true;
+        }
+        break;
+    case UVM_TYPE_I32:
+        if (num <= 0xFFFFFFFF) {
+            fits = true;
+        }
+        break;
+    case UVM_TYPE_I64:
+        fits = true;
+        break;
+    }
+    return fits;
+}
+
+/**
+ * Checks if a float can fit into given type assmuning that type is less than
+ * 64-bit
+ * @param num Integer to be checked
+ * @param type Target type
+ * @return On success returns true otherwise false
+ */
+bool checkFloatWidth(double num, uint8_t type) {
+    bool fits = false;
+    switch (type) {
+    case UVM_TYPE_F32:
+        if (num <= FLT_MAX) {
+            fits = true;
+        }
+        break;
+    case UVM_TYPE_F64:
+        fits = true;
+        break;
+    }
+    return fits;
+}
+
+/**
+ * Converts a string to an integer
+ * @param str String to be converted
+ * @param num [out] Converted integer
+ * @return If integer fits into a 64-bit integer returns true otherwhise false
+ */
+bool strToInt(std::string& str, uint64_t& num) {
+    int32_t base = 10;
+    if (str.size() >= 3) {
+        if (str[0] == '0' && str[1] == 'x') {
+            base = 16;
+        }
+    }
+    // Warning: this only works with unsigned numbers and  does not handle
+    // signed numbers
+    // If string number is bigger than 64-bit exception is thrown.
+    try {
+        num = std::stoull(str, 0, base);
+    } catch (const std::out_of_range) {
+        return false;
+    }
+    return true;
+}
+
+/**
+ * Converts a string to a floating-point value
+ * @param str String to be converted
+ * @param num [out] Converted float
+ * @return If a floating-point value fits into a 64-bit float returns true
+ * otherwhise false
+ */
+bool strToFP(std::string& str, double& num) {
+    // If string float is bigger than 64-bit exception is thrown.
+    try {
+        num = std::stod(str, 0);
+    } catch (const std::out_of_range) {
+        return false;
+    }
+    return true;
+}
+
+/**
  * Constructs a new Parser
  * @param instrDefs Pointer to instruction definitons
  * @param src Pointer to the source file
@@ -48,25 +143,6 @@ Parser::Parser(std::vector<InstrDefNode>* instrDefs,
                std::vector<LabelDefLookup>* funcDefs)
     : InstrDefs(instrDefs), Src(src), Tokens(tokens), FileNode(fileNode),
       LabelDefs(funcDefs){};
-
-/**
- * Converts a string to an integer
- * @param str String to be converted
- * @return Integer of string
- */
-int64_t Parser::strToInt(std::string& str) {
-    int64_t num = 0;
-    int32_t base = 10;
-    if (str.size() >= 3) {
-        if (str[0] == '0' && str[1] == 'x') {
-            base = 16;
-        }
-    }
-    // Warning: this only works with unsigned numbers and  does not handle
-    // signed numbers
-    num = std::stoull(str, 0, base);
-    return num;
-}
 
 /**
  * Returns token at current Cursor and increases the Cursor
@@ -216,7 +292,13 @@ bool Parser::parseRegOffset(Instruction* instr) {
             // Get int string and convert to an int
             std::string numStr;
             Src->getSubStr(t->Index, t->Size, numStr);
-            int64_t num = strToInt(numStr);
+            uint64_t num = 0;
+            if (!strToInt(numStr, num)) {
+                printTokenError(
+                    "Register offset immediate does not fit into 32-bit value",
+                    *t);
+                return false;
+            }
 
             // <iR> + <i32> expects integer to have a maximum size of 32 bits
             // Check if the requirement is meet otherwise throw error
@@ -260,7 +342,12 @@ bool Parser::parseRegOffset(Instruction* instr) {
 
         std::string numStr;
         Src->getSubStr(t->Index, t->Size, numStr);
-        int64_t num = strToInt(numStr);
+        uint64_t num = 0;
+        if (!strToInt(numStr, num)) {
+            printTokenError(
+                "Register offset immediate does not fit into 16-bit value", *t);
+            return false;
+        }
 
         // <iR> +/- <iR> * <i16> expects integer to have a maximum size of 16
         // bits Check if the requirement is meet otherwise throw error
@@ -361,12 +448,41 @@ bool Parser::parseSectionVars(ASTSection* sec) {
                                            tok->LineCol, parsedStr);
             val = dynamic_cast<ASTNode*>(str);
         } else if (tok->Type == TokenType::INTEGER_NUMBER) {
-            uint64_t intVal = strToInt(tokString);
+            uint64_t intVal = 0;
+
+            if (!strToInt(tokString, intVal)) {
+                printTokenError("Integer does not fit into 64-bit value", *tok);
+                validSec = false;
+                break;
+            }
+
+            if (!checkIntWidth(intVal, typeInfo->DataType)) {
+                printTokenError("Integer does not fit into given type value",
+                                *tok);
+                validSec = false;
+                break;
+            }
+
             ASTInt* integer = new ASTInt(tok->Index, tok->Size, tok->LineRow,
                                          tok->LineCol, intVal);
             val = dynamic_cast<ASTNode*>(integer);
         } else if (tok->Type == TokenType::FLOAT_NUMBER) {
-            double floatVal = std::stod(tokString);
+            double floatVal = 0;
+            if (!strToFP(tokString, floatVal)) {
+                printTokenError(
+                    "Floating-point value does not fit into 64-bit value",
+                    *tok);
+                validSec = false;
+                break;
+            }
+
+            if (!checkFloatWidth(floatVal, typeInfo->DataType)) {
+                printTokenError(
+                    "Floating-point value does not fit into given value", *tok);
+                validSec = false;
+                break;
+            }
+
             ASTFloat* fl = new ASTFloat(tok->Index, tok->Size, tok->LineRow,
                                         tok->LineCol, floatVal);
             val = dynamic_cast<ASTNode*>(fl);
@@ -491,7 +607,14 @@ bool Parser::parseSectionCode() {
                 case TokenType::INTEGER_NUMBER: {
                     std::string numStr;
                     Src->getSubStr(t->Index, t->Size, numStr);
-                    int64_t num = strToInt(numStr);
+                    uint64_t num = 0;
+
+                    if (!strToInt(numStr, num)) {
+                        printTokenError(
+                            "Integer does not fit into 64-bit value", *t);
+                        return false;
+                    }
+
                     ASTInt* iNum = new ASTInt(t->Index, t->Size, t->LineRow,
                                               t->LineCol, num);
                     instr->Params.push_back(iNum);
@@ -609,8 +732,8 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
     InstrDefNode* paramNode = &(*InstrDefs)[instr->ASMDefIndex];
 
     // Check if instr has no parameters and see if definiton accepts no
-    // paramters. Important: this assumes that an instruction definiton either
-    // has 0 parameters or only paramter definitons with at least 1. It cannot
+    // parameters. Important: this assumes that an instruction definiton either
+    // has 0 parameters or only parameter definitons with at least 1. It cannot
     // have both
     if (instr->Params.size() == 0) {
         if (paramNode->Children.size() == 0) {
@@ -628,6 +751,8 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
     // Try to find instruction parameter signature
     InstrParamList* paramList = nullptr;
     InstrDefNode* currentNode = paramNode;
+    // This error does not indicate if a paramlist was found or not
+    bool error = false;
     // This is a reference used to tag every float/int paramter with the correct
     // type and select the corrent opcode variant. This assumes that there can
     // only ever be one TypeInfo in the paramters of an instruction.
@@ -682,8 +807,7 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
                     break;
                 }
                 RegisterId* regId = dynamic_cast<RegisterId*>(astNode);
-                // TODO: What about flag register ?
-                if (regId->Id < 0x1 || regId->Id > 0x15) {
+                if (getRegisterType(regId->Id) != RegisterType::INTEGER) {
                     printError(Src, regId->Index, 3, regId->LineRow,
                                regId->LineCol, "Expected integer register");
                     break;
@@ -695,7 +819,7 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
                     break;
                 }
                 RegisterId* regId = dynamic_cast<RegisterId*>(astNode);
-                if (regId->Id < 0x16 || regId->Id > 0x26) {
+                if (getRegisterType(regId->Id) != RegisterType::FLOAT) {
                     printError(Src, regId->Index, 3, regId->LineRow,
                                regId->LineCol, "Expected float register");
                     break;
@@ -712,8 +836,15 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
                 if (astNode->Type != ASTType::INTEGER_NUMBER) {
                     break;
                 }
+
                 ASTInt* num = dynamic_cast<ASTInt*>(astNode);
                 num->DataType = type->DataType;
+                if (!checkIntWidth(num->Num, num->DataType)) {
+                    printError(Src, num->Index, num->Size, num->LineRow,
+                               num->LineCol,
+                               "Integer does not fit into given type");
+                    error = true;
+                }
                 nextNode = &currentNode->Children[n];
             } break;
             case InstrParamType::FLOAT_NUM: {
@@ -723,6 +854,12 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
 
                 ASTFloat* num = dynamic_cast<ASTFloat*>(astNode);
                 num->DataType = type->DataType;
+                if (!checkFloatWidth(num->Num, num->DataType)) {
+                    printError(Src, num->Index, num->Size, num->LineRow,
+                               num->LineCol,
+                               "Float does not fit into given type");
+                    error = true;
+                }
                 nextNode = &currentNode->Children[n];
             } break;
             case InstrParamType::SYS_INT: {
@@ -753,6 +890,10 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
         printError(Src, instr->Index, instr->Name.size(), instr->LineRow,
                    instr->LineCol,
                    "Error no matching parameter list found for instruction");
+        return false;
+    }
+
+    if (error) {
         return false;
     }
 
