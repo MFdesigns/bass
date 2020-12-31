@@ -22,6 +22,18 @@
 #include <iostream>
 
 /**
+ * Returns the register type
+ * @param regId Register id
+ * @return Type of register
+ */
+RegisterType getRegisterType(uint8_t regId) {
+    if (regId >= 0 && regId <= 0x14 && regId != 0x4) {
+        return RegisterType::INTEGER;
+    }
+    return RegisterType::FLOAT;
+}
+
+/**
  * Constructs a new Parser
  * @param instrDefs Pointer to instruction definitons
  * @param src Pointer to the source file
@@ -168,6 +180,10 @@ bool Parser::parseRegOffset(Instruction* instr) {
     }
 
     if (t->Type == TokenType::REGISTER_DEFINITION) {
+        if (getRegisterType(t->Tag) != RegisterType::INTEGER) {
+            printTokenError("Expected integer register as base", *t);
+            return false;
+        }
         regOff->Base =
             new RegisterId(t->Index, t->Size, t->LineRow, t->LineCol, t->Tag);
         t = eatToken();
@@ -227,6 +243,10 @@ bool Parser::parseRegOffset(Instruction* instr) {
             return false;
         }
     } else if (t->Type == TokenType::REGISTER_DEFINITION) {
+        if (getRegisterType(t->Tag) != RegisterType::INTEGER) {
+            printTokenError("Expected integer register as offset", *t);
+            return false;
+        }
         regOff->Offset =
             new RegisterId(t->Index, t->Size, t->LineRow, t->LineCol, t->Tag);
         t = eatToken();

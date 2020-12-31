@@ -23,6 +23,11 @@
 
 enum class ParseState { GLOBAL_SCOPE, INSTR_BODY, END };
 
+enum class RegisterType {
+    INTEGER,
+    FLOAT,
+};
+
 class Parser {
   public:
     Parser(std::vector<InstrDefNode>* instrDefs,
