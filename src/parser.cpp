@@ -576,14 +576,22 @@ bool Parser::parseSectionCode() {
             }
         } break;
         case ParseState::INSTR_BODY: {
+            bool endOfParamList = false;
+
             if (t->Type == TokenType::TYPE_INFO) {
                 TypeInfo* typeInfo = new TypeInfo(t->Index, t->Size, t->LineRow,
                                                   t->LineCol, t->Tag);
                 instr->Params.push_back(typeInfo);
                 t = eatToken();
+
+                // This prevents the parser from trying to parse the instruction
+                // body of instruction which only have a type a parameter like
+                // "pop i8"
+                if (t->Type == TokenType::EOL) {
+                    endOfParamList = true;
+                }
             }
 
-            bool endOfParamList = false;
             while (!endOfParamList) {
                 switch (t->Type) {
                 case TokenType::IDENTIFIER: {
