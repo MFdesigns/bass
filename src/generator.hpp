@@ -32,7 +32,7 @@ constexpr uint8_t SEC_PERM_WRITE = 0b0100'0000;
 constexpr uint8_t SEC_PERM_EXECUTE = 0b0010'0000;
 
 constexpr uint32_t HEADER_SIZE = 0x60;
-constexpr uint32_t SEC_TABLE_ENTRY_SIZE = 0x1A;
+constexpr uint32_t SEC_TABLE_ENTRY_SIZE = 0x16;
 
 // TODO: Remove?
 typedef unsigned long long vAddr;
@@ -71,7 +71,7 @@ struct Section {
     uint8_t Type = 0;
     uint8_t Perms = 0;
     uint64_t StartAddr = 0;
-    uint64_t Size = 0;
+    uint32_t Size = 0;
     SecNameString* SecName = nullptr;
 };
 

@@ -85,7 +85,7 @@ void Generator::createSectionTable() {
     Buffer->increase(secTableSize);
 
     // Encode section name string entries
-    uint64_t secNameSize = 0;
+    uint32_t secNameSize = 0;
     SecNameTable->StartAddr = Cursor;
     for (auto& entry : SecNameStrings) {
         // Add a reference to the string entry to later be used as a pointer
@@ -296,8 +296,8 @@ void Generator::fillSectionTable() {
         tmp[0] = sec->Type;
         tmp[1] = sec->Perms;
         std::memcpy(&tmp[2], &sec->StartAddr, 8);
-        std::memcpy(&tmp[0xA], &sec->Size, 8);
-        std::memcpy(&tmp[0x12], &sec->SecName->Addr, 8);
+        std::memcpy(&tmp[0xA], &sec->Size, 4);
+        std::memcpy(&tmp[0xE], &sec->SecName->Addr, 8);
         Buffer->write(tmpCursor, tmp, SEC_TABLE_ENTRY_SIZE);
         tmpCursor += SEC_TABLE_ENTRY_SIZE;
     }
