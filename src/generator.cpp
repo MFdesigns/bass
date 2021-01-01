@@ -32,7 +32,6 @@ Generator::Generator(ASTFileNode* ast,
                      std::filesystem::path* p,
                      std::vector<LabelDefLookup>* funcDefs)
     : AST(ast), FilePath(p), LabelDefs(funcDefs) {
-    Buffer = new FileBuffer();
     // Setup section name strings
     SecNameStrings.reserve(4);
     SecNameStrings.emplace_back("Section Names", 0);
@@ -58,19 +57,18 @@ Generator::Generator(ASTFileNode* ast,
 }
 
 Generator::~Generator() {
-    delete Buffer;
     delete SecNameTable;
     delete SecCode;
 }
 
 void Generator::createHeader() {
     // Allocate header
-    Buffer->increase(HEADER_SIZE);
+    Buffer.reserve(HEADER_SIZE);
     // Magic
     uint8_t version = 0x1;
     uint8_t mode = 0x1;
     uint8_t data[] = {'S', 'I', 'P', 'P', version, mode};
-    Buffer->write(Cursor, data, sizeof(data));
+    Buffer.write(Cursor, data, sizeof(data));
     Cursor += HEADER_SIZE;
 }
 
@@ -82,7 +80,7 @@ void Generator::createSectionTable() {
     uint64_t secNameVAddr = HEADER_SIZE + secTableSize;
     Cursor += secTableSize;
     // Allocate section table
-    Buffer->increase(secTableSize);
+    Buffer.reserve(secTableSize);
 
     // Encode section name string entries
     uint32_t secNameSize = 0;
@@ -92,12 +90,12 @@ void Generator::createSectionTable() {
         // inside the section table
         entry.Addr = Cursor;
 
-        uint32_t strSize = entry.Str.size();
-        Buffer->push(strSize);
+        uint8_t strSize = entry.Str.size();
+        Buffer.push(&strSize, 1);
         // Allocate the string
         uint8_t* cStr = (uint8_t*)entry.Str.c_str();
-        Buffer->increase(strSize);
-        Buffer->write(Cursor + 1, cStr, strSize);
+        Buffer.reserve(strSize);
+        Buffer.write(Cursor + 1, cStr, strSize);
         Cursor += strSize + 1;
         secNameSize += strSize + 1;
     }
@@ -107,7 +105,7 @@ void Generator::createSectionTable() {
 void Generator::writeFile() {
     FilePath->replace_filename("main.ux");
     std::ofstream stream{*FilePath, std::ios::binary};
-    Buffer->writeToStream(stream);
+    Buffer.writeToStream(stream);
     stream.close();
 }
 
@@ -225,8 +223,8 @@ void Generator::emitInstruction(Instruction* instr) {
     }
 
     // Copy temp instr bytecode to file buffer
-    Buffer->increase(instrSize);
-    Buffer->write(Cursor, temp, instrSize);
+    Buffer.reserve(instrSize);
+    Buffer.write(Cursor, temp, instrSize);
     Cursor += instrSize;
 }
 
@@ -277,7 +275,7 @@ void Generator::createByteCode() {
 void Generator::resolveLabelRefs() {
     for (const ResolvableLabelRef& res : ResLabelRefs) {
         uint64_t labelVAddr = res.LabelDef->VAddr;
-        Buffer->write(res.VAddr, &labelVAddr, sizeof(labelVAddr));
+        Buffer.write(res.VAddr, &labelVAddr, sizeof(labelVAddr));
     }
 }
 
@@ -288,7 +286,7 @@ void Generator::fillSectionTable() {
 
     // Put section table size
     uint32_t secTableSize = tmpSections.size() * SEC_TABLE_ENTRY_SIZE;
-    Buffer->write(tmpCursor, (uint8_t*)&secTableSize, 4);
+    Buffer.write(tmpCursor, (uint8_t*)&secTableSize, 4);
     tmpCursor += 4;
 
     for (auto& sec : tmpSections) {
@@ -298,7 +296,7 @@ void Generator::fillSectionTable() {
         std::memcpy(&tmp[2], &sec->StartAddr, 8);
         std::memcpy(&tmp[0xA], &sec->Size, 4);
         std::memcpy(&tmp[0xE], &sec->SecName->Addr, 8);
-        Buffer->write(tmpCursor, tmp, SEC_TABLE_ENTRY_SIZE);
+        Buffer.write(tmpCursor, tmp, SEC_TABLE_ENTRY_SIZE);
         tmpCursor += SEC_TABLE_ENTRY_SIZE;
     }
 }
@@ -320,39 +318,39 @@ void Generator::encodeSectionVars(ASTSection* srcSec, Section* owningSec) {
         switch (varType) {
         case UVM_TYPE_I8: {
             ASTInt* astInt = dynamic_cast<ASTInt*>(var->Val);
-            Buffer->write(Cursor, (uint8_t*)&astInt->Num, 1);
+            Buffer.push((uint8_t*)&astInt->Num, 1);
             varSize = 1;
         } break;
         case UVM_TYPE_I16: {
             ASTInt* astInt = dynamic_cast<ASTInt*>(var->Val);
-            Buffer->write(Cursor, (uint8_t*)&astInt->Num, 2);
+            Buffer.push((uint8_t*)&astInt->Num, 2);
             varSize = 2;
         } break;
         case UVM_TYPE_I32: {
             ASTInt* astInt = dynamic_cast<ASTInt*>(var->Val);
-            Buffer->write(Cursor, (uint8_t*)&astInt->Num, 4);
+            Buffer.push((uint8_t*)&astInt->Num, 4);
             varSize = 4;
         } break;
         case UVM_TYPE_I64: {
             ASTInt* astInt = dynamic_cast<ASTInt*>(var->Val);
-            Buffer->write(Cursor, (uint8_t*)&astInt->Num, 8);
+            Buffer.push((uint8_t*)&astInt->Num, 8);
             varSize = 8;
         } break;
         case UVM_TYPE_F32: {
             ASTFloat* astFloat = dynamic_cast<ASTFloat*>(var->Val);
             float val = static_cast<float>(astFloat->Num);
-            Buffer->write(Cursor, (uint8_t*)&val, 4);
+            Buffer.push((uint8_t*)&val, 4);
             varSize = 4;
         } break;
         case UVM_TYPE_F64: {
             ASTFloat* astFloat = dynamic_cast<ASTFloat*>(var->Val);
-            Buffer->write(Cursor, (uint8_t*)&astFloat->Num, 8);
+            Buffer.push((uint8_t*)&astFloat->Num, 8);
             varSize = 8;
         } break;
         case BASS_TYPE_STRING: {
             ASTString* str = dynamic_cast<ASTString*>(var->Val);
             uint32_t strSize = str->Val.size();
-            Buffer->write(Cursor, str->Val.data(), strSize);
+            Buffer.push(str->Val.data(), strSize);
             varSize = strSize;
         } break;
         }
@@ -396,7 +394,7 @@ void Generator::genBinary() {
     createByteCode();
     resolveLabelRefs();
 
-    Buffer->write(0x8, (uint8_t*)&StartAddr, 8);
+    Buffer.write(0x8, (uint8_t*)&StartAddr, 8);
     fillSectionTable();
 
     writeFile();

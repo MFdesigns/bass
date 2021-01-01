@@ -95,7 +95,7 @@ class Generator {
     /** This vector keeps track of where at which address variables are placed
      */
     std::vector<VarDeclaration> VarDecls;
-    FileBuffer* Buffer = nullptr;
+    OutputFileBuffer Buffer;
     Section* SecNameTable = nullptr;
     Section* SecStatic = nullptr;
     Section* SecGlobal = nullptr;
