@@ -69,7 +69,7 @@ void OutputFileBuffer::write(size_t index, void* src, size_t size) {
     BufferRange* range = nullptr;
     size_t rangeIndex = 0;
     for (const BufferRange& buff : Buffers) {
-        if (index >= buff.Start && index <= buff.Start + buff.Size) {
+        if (index >= buff.Start && index < buff.Start + buff.Size) {
             range = const_cast<BufferRange*>(&buff);
             break;
         }
