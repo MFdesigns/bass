@@ -762,7 +762,7 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
     // This error does not indicate if a paramlist was found or not
     bool error = false;
     // This is a reference used to tag every float/int paramter with the correct
-    // type and select the corrent opcode variant. This assumes that there can
+    // type and select the correct opcode variant. This assumes that there can
     // only ever be one TypeInfo in the paramters of an instruction.
     TypeInfo* type = nullptr;
     for (uint32_t i = 0; i < instr->Params.size(); i++) {
