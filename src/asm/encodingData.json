@@ -729,6 +729,49 @@
         },
         {
             "opcode": "",
+            "name": "muls",
+            "paramList": [
+                {
+                    "opcode": "0x59",
+                    "encodeType": false,
+                    "params": [
+                        "iT",
+                        "iReg",
+                        "int"
+                    ],
+                    "typeVariants": [
+                        {
+                            "type": "i8",
+                            "opcode": "0x59"
+                        },
+                        {
+                            "type": "i16",
+                            "opcode": "0x5A"
+                        },
+                        {
+                            "type": "i32",
+                            "opcode": "0x5B"
+                        },
+                        {
+                            "type": "i64",
+                            "opcode": "0x5C"
+                        }
+                    ]
+                },
+                {
+                    "opcode": "0x5C",
+                    "encodeType": true,
+                    "params": [
+                        "iT",
+                        "iReg",
+                        "iReg"
+                    ],
+                    "typeVariants": []
+                }
+            ]
+        },
+        {
+            "opcode": "",
             "name": "div",
             "paramList": [
                 {
@@ -800,6 +843,49 @@
                         "fT",
                         "fReg",
                         "fReg"
+                    ],
+                    "typeVariants": []
+                }
+            ]
+        },
+        {
+            "opcode": "",
+            "name": "divs",
+            "paramList": [
+                {
+                    "opcode": "0x69",
+                    "encodeType": false,
+                    "params": [
+                        "iT",
+                        "iReg",
+                        "int"
+                    ],
+                    "typeVariants": [
+                        {
+                            "type": "i8",
+                            "opcode": "0x69"
+                        },
+                        {
+                            "type": "i16",
+                            "opcode": "0x6A"
+                        },
+                        {
+                            "type": "i32",
+                            "opcode": "0x6B"
+                        },
+                        {
+                            "type": "i64",
+                            "opcode": "0x6C"
+                        }
+                    ]
+                },
+                {
+                    "opcode": "0x6C",
+                    "encodeType": true,
+                    "params": [
+                        "iT",
+                        "iReg",
+                        "iReg"
                     ],
                     "typeVariants": []
                 }
