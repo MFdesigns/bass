@@ -20,9 +20,13 @@
 #include <iostream>
 #include <vector>
 
+void printUsage() {
+    std::cout << "usage: bass <path>\n";
+}
+
 int main(int argc, char* argv[]) {
     if (argc < 2) {
-        std::cout << "usage: uvm-assembler <path>\n";
+        printUsage();
         return -1;
     }
 
