@@ -20,16 +20,14 @@
 #include <cstdint>
 #include <filesystem>
 #include <vector>
+#include "parser.hpp"
 
 constexpr uint8_t SEC_NAME_STRINGS = 0x1;
 constexpr uint8_t SEC_META_DATA = 0x2;
 constexpr uint8_t SEC_DEBUG = 0x3;
 constexpr uint8_t SEC_STATIC = 0x4;
-constexpr uint8_t SEC_CODE = 0x5;
-
-constexpr uint8_t SEC_PERM_READ = 0b1000'0000;
-constexpr uint8_t SEC_PERM_WRITE = 0b0100'0000;
-constexpr uint8_t SEC_PERM_EXECUTE = 0b0010'0000;
+constexpr uint8_t SEC_GLOBAL = 0x5;
+constexpr uint8_t SEC_CODE = 0x6;
 
 constexpr uint32_t HEADER_SIZE = 0x60;
 constexpr uint32_t SEC_TABLE_ENTRY_SIZE = 0x16;
@@ -50,37 +48,27 @@ struct ResolvableLabelRef {
     LabelDefLookup* LabelDef = nullptr;
 };
 
-/**
- * This keeps track of variable position in memory so that the generator can
- * resolve references to variables in the code section
- */
-struct VarDeclaration {
-    /** Virtual address to variable in memory */
-    uint64_t VAddr = 0;
-    /** The variable name which is at this position */
-    Identifier* Id = nullptr;
-};
-
 struct SecNameString {
     SecNameString(std::string str, vAddr addr);
     std::string Str;
     vAddr Addr = 0;
 };
 
-struct Section {
+struct GenSection {
     uint8_t Type = 0;
     uint8_t Perms = 0;
     uint64_t StartAddr = 0;
     uint32_t Size = 0;
-    SecNameString* SecName = nullptr;
+    uint32_t SecNameIndex = 0;
+    ASTSection* SecPtr = nullptr;
 };
 
 class Generator {
   public:
     Generator(ASTFileNode* ast,
               std::filesystem::path* p,
-              std::vector<LabelDefLookup>* funcDefs);
-    ~Generator();
+              std::vector<LabelDefLookup>* funcDefs,
+              std::vector<VarDeclaration>* varDecls);
     void genBinary();
 
   private:
@@ -92,14 +80,10 @@ class Generator {
     std::vector<LabelDefLookup>* LabelDefs = nullptr;
     /** Vector of label references which have to be resolved */
     std::vector<ResolvableLabelRef> ResLabelRefs;
-    /** This vector keeps track of where at which address variables are placed
-     */
-    std::vector<VarDeclaration> VarDecls;
+    /** Non owning pointer */
+    std::vector<VarDeclaration>* VarDecls;
     OutputFileBuffer Buffer;
-    Section* SecNameTable = nullptr;
-    Section* SecStatic = nullptr;
-    Section* SecGlobal = nullptr;
-    Section* SecCode = nullptr;
+    std::vector<GenSection> Sections;
     std::vector<SecNameString> SecNameStrings;
     uint64_t Cursor = 0;
     vAddr StartAddr = 0;
@@ -112,6 +96,6 @@ class Generator {
     void resolveLabelRefs();
     void fillSectionTable();
     void writeFile();
-    void encodeSectionVars(ASTSection* srcSec, Section* owningSec);
+    void encodeSectionVars(GenSection& sec);
     void resolveVariableOffset(RegisterOffset* ro);
 };

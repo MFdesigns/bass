@@ -72,9 +72,10 @@ bool Assembler::assemble() {
     }
 
     ASTFileNode fileNode{};
-    std::vector<LabelDefLookup> labelDefs{};
+    std::vector<LabelDefLookup> labelDefs;
+    std::vector<VarDeclaration> VarDecls;
 
-    Parser parse{InstrDefs, Src, &Tokens, &fileNode, &labelDefs};
+    Parser parse{InstrDefs, Src, &Tokens, &fileNode, &labelDefs, &VarDecls};
     bool astSucc = parse.buildAST();
     if (!astSucc) {
         return false;
@@ -85,7 +86,7 @@ bool Assembler::assemble() {
         return false;
     }
 
-    Generator gen{&fileNode, &File, &labelDefs};
+    Generator gen{&fileNode, &File, &labelDefs, &VarDecls};
     gen.genBinary();
 
     return true;

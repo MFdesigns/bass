@@ -199,6 +199,7 @@ class ASTVariable : public ASTNode {
     Identifier* Id;
     TypeInfo* DataType;
     ASTNode* Val;
+    uint32_t VarDeclIndex = 0;
 };
 
 class ASTString : public ASTNode {

@@ -30,36 +30,9 @@ SecNameString::SecNameString(std::string str, vAddr addr)
  */
 Generator::Generator(ASTFileNode* ast,
                      std::filesystem::path* p,
-                     std::vector<LabelDefLookup>* funcDefs)
-    : AST(ast), FilePath(p), LabelDefs(funcDefs) {
-    // Setup section name strings
-    SecNameStrings.reserve(4);
-    SecNameStrings.emplace_back("Section Names", 0);
-    SecNameStrings.emplace_back("Static", 0);
-    SecNameStrings.emplace_back("Global", 0);
-    SecNameStrings.emplace_back("Code", 0);
-    // Add sections
-    SecNameTable = new Section{};
-    SecNameTable->Type = SEC_NAME_STRINGS;
-    SecNameTable->SecName = &SecNameStrings[0];
-    SecStatic = new Section{};
-    SecStatic->Type = SEC_STATIC;
-    SecStatic->Perms = SEC_PERM_READ;
-    SecStatic->SecName = &SecNameStrings[1];
-    SecGlobal = new Section{};
-    SecGlobal->Type = SEC_STATIC;
-    SecGlobal->Perms = SEC_PERM_READ | SEC_PERM_WRITE;
-    SecGlobal->SecName = &SecNameStrings[2];
-    SecCode = new Section{};
-    SecCode->Type = SEC_CODE;
-    SecCode->Perms = SEC_PERM_READ | SEC_PERM_EXECUTE;
-    SecCode->SecName = &SecNameStrings[3];
-}
-
-Generator::~Generator() {
-    delete SecNameTable;
-    delete SecCode;
-}
+                     std::vector<LabelDefLookup>* funcDefs,
+                     std::vector<VarDeclaration>* varDecls)
+    : AST(ast), FilePath(p), LabelDefs(funcDefs), VarDecls(varDecls) { }
 
 void Generator::createHeader() {
     // Allocate header
@@ -73,10 +46,56 @@ void Generator::createHeader() {
 }
 
 void Generator::createSectionTable() {
-    constexpr uint32_t secTableCount = 4;
+    // Figure out how many sections are actually defined and not empty. Start at count 1 because section of section name strings is alawys there
+    uint32_t secTableCount = 1;
+    std::vector<ASTSection*> sections = {AST->SecStatic, AST->SecGlobal, AST->SecCode};
+
+    // Add section name strings section
+    GenSection secNameStrs{};
+    secNameStrs.Type = SEC_NAME_STRINGS;
+    secNameStrs.SecNameIndex = SecNameStrings.size();
+    SecNameStrings.emplace_back("Section Name Strings", 0);
+
+    uint32_t secNameStrsIndex = Sections.size();
+    Sections.push_back(secNameStrs);
+
+    for (const ASTSection* sec: sections) {
+        if (sec != nullptr) {
+            if (sec->Body.size() > 0) {
+                GenSection secEntry{};
+                char* secName = nullptr;
+                uint8_t secPerms = 0;
+
+                switch (sec->SecType) {
+                    case ASTSectionType::STATIC:
+                    secEntry.Type = SEC_STATIC;
+                        secName = "Static";
+                    secPerms = SEC_PERM_READ;
+                    break;
+                    case ASTSectionType::GLOBAL:
+                        secEntry.Type = SEC_GLOBAL;
+                        secName = "Global";
+                        secPerms = SEC_PERM_READ & SEC_PERM_WRITE;
+                    break;
+                    case ASTSectionType::CODE:
+                        secEntry.Type = SEC_CODE;
+                        secName = "Code";
+                        secPerms = SEC_PERM_READ & SEC_PERM_EXECUTE;
+                    break;
+                }
+
+                secEntry.SecNameIndex = SecNameStrings.size();
+                secEntry.SecPtr = const_cast<ASTSection*>(sec);
+                secEntry.Perms = secPerms;
+                SecNameStrings.emplace_back(secName, 0);
+                Sections.push_back(secEntry);
+                secTableCount++;
+            }
+        }
+    }
 
     // + 4 because of the section table size uint32_t at the beginning
-    constexpr uint32_t secTableSize = secTableCount * SEC_TABLE_ENTRY_SIZE + 4;
+    uint32_t secTableSize = secTableCount * SEC_TABLE_ENTRY_SIZE + 4;
     uint64_t secNameVAddr = HEADER_SIZE + secTableSize;
     Cursor += secTableSize;
     // Allocate section table
@@ -84,7 +103,7 @@ void Generator::createSectionTable() {
 
     // Encode section name string entries
     uint32_t secNameSize = 0;
-    SecNameTable->StartAddr = Cursor;
+    Sections[secNameStrsIndex].StartAddr = Cursor;
     for (auto& entry : SecNameStrings) {
         // Add a reference to the string entry to later be used as a pointer
         // inside the section table
@@ -99,7 +118,7 @@ void Generator::createSectionTable() {
         Cursor += strSize + 1;
         secNameSize += strSize + 1;
     }
-    SecNameTable->Size = secNameSize;
+    Sections[secNameStrsIndex].Size = secNameSize;
 }
 
 void Generator::writeFile() {
@@ -110,7 +129,7 @@ void Generator::writeFile() {
 }
 
 void Generator::emitRegisterOffset(RegisterOffset* regOff, uint8_t* out) {
-    // Check if register offset is variable offset if so resolve it before
+    // Check if register offset is variable offset if not resolve it before
     // encoding
     if (regOff->Var != nullptr) {
         resolveVariableOffset(regOff);
@@ -232,8 +251,16 @@ void Generator::emitInstruction(Instruction* instr) {
  * Generates bytecode and appends it to file buffer
  */
 void Generator::createByteCode() {
+    // Find code section
+    GenSection* codeSec = nullptr;
+    for (GenSection& sec : Sections) {
+        if (sec.Type == SEC_CODE) {
+            codeSec = &sec;
+        }
+    }
+
     // Set the current Cursor as start of code section
-    SecCode->StartAddr = Cursor;
+    codeSec->StartAddr = Cursor;
     for (auto& globElem : AST->SecCode->Body) {
         switch (globElem->Type) {
         case ASTType::LABEL_DEFINITION: {
@@ -266,7 +293,7 @@ void Generator::createByteCode() {
     }
 
     // Set code section size
-    SecCode->Size = Cursor - SecCode->StartAddr;
+    codeSec->Size = Cursor - codeSec->StartAddr;
 }
 
 /**
@@ -280,22 +307,20 @@ void Generator::resolveLabelRefs() {
 }
 
 void Generator::fillSectionTable() {
-    std::array<Section*, 4> tmpSections = {SecNameTable, SecStatic, SecGlobal,
-                                           SecCode};
     uint8_t tmpCursor = HEADER_SIZE;
 
     // Put section table size
-    uint32_t secTableSize = tmpSections.size() * SEC_TABLE_ENTRY_SIZE;
+    uint32_t secTableSize = Sections.size() * SEC_TABLE_ENTRY_SIZE;
     Buffer.write(tmpCursor, (uint8_t*)&secTableSize, 4);
     tmpCursor += 4;
 
-    for (auto& sec : tmpSections) {
+    for (auto& sec : Sections) {
         uint8_t tmp[SEC_TABLE_ENTRY_SIZE] = {};
-        tmp[0] = sec->Type;
-        tmp[1] = sec->Perms;
-        std::memcpy(&tmp[2], &sec->StartAddr, 8);
-        std::memcpy(&tmp[0xA], &sec->Size, 4);
-        std::memcpy(&tmp[0xE], &sec->SecName->Addr, 8);
+        tmp[0] = sec.Type;
+        tmp[1] = sec.Perms;
+        std::memcpy(&tmp[2], &sec.StartAddr, 8);
+        std::memcpy(&tmp[0xA], &sec.Size, 4);
+        std::memcpy(&tmp[0xE], &SecNameStrings[sec.SecNameIndex].Addr, 8);
         Buffer.write(tmpCursor, tmp, SEC_TABLE_ENTRY_SIZE);
         tmpCursor += SEC_TABLE_ENTRY_SIZE;
     }
@@ -307,10 +332,10 @@ void Generator::fillSectionTable() {
  * @param srcSec A pointer to the ASTSection containing the ASTVariables
  * @param owningSec Section table entry which will be filled out
  */
-void Generator::encodeSectionVars(ASTSection* srcSec, Section* owningSec) {
+void Generator::encodeSectionVars(GenSection& sec) {
     uint64_t secStartAddr = Cursor;
 
-    for (ASTNode* node : srcSec->Body) {
+    for (ASTNode* node : sec.SecPtr->Body) {
         ASTVariable* var = dynamic_cast<ASTVariable*>(node);
         uint8_t varType = var->DataType->DataType;
         uint32_t varSize = 0;
@@ -355,16 +380,16 @@ void Generator::encodeSectionVars(ASTSection* srcSec, Section* owningSec) {
         } break;
         }
 
-        VarDecls.push_back(VarDeclaration{Cursor, var->Id});
+        (*VarDecls)[var->VarDeclIndex].VAddr = Cursor;
         Cursor += varSize;
     }
 
-    owningSec->Size = Cursor - secStartAddr;
-    owningSec->StartAddr = secStartAddr;
+    sec.Size = Cursor - secStartAddr;
+    sec.StartAddr = secStartAddr;
 }
 
 /**
- * Fills out variable offsets with register offset
+ * Fills out variable offset with register offset
  */
 void Generator::resolveVariableOffset(RegisterOffset* ro) {
     constexpr uint8_t REG_IP = 0x1;
@@ -372,7 +397,7 @@ void Generator::resolveVariableOffset(RegisterOffset* ro) {
     ro->Layout = RO_LAYOUT_IR_INT | RO_LAYOUT_NEGATIVE;
     ro->Base = new RegisterId(0, 0, 0, 0, REG_IP);
     // Find variable definiton
-    for (auto& varDecl : VarDecls) {
+    for (auto& varDecl : *VarDecls) {
         if (varDecl.Id->Name == ro->Var->Name) {
             ro->Immediate.U32 = static_cast<uint32_t>(Cursor - varDecl.VAddr);
             break;
@@ -388,8 +413,11 @@ void Generator::genBinary() {
     createSectionTable();
 
     // Encode static and global sections
-    encodeSectionVars(AST->SecStatic, SecStatic);
-    encodeSectionVars(AST->SecGlobal, SecGlobal);
+    for (GenSection& genSec : Sections) {
+        if (genSec.Type == SEC_STATIC || genSec.Type == SEC_GLOBAL) {
+            encodeSectionVars(genSec);
+        }
+    }
 
     createByteCode();
     resolveLabelRefs();

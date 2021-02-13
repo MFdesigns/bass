@@ -140,9 +140,10 @@ Parser::Parser(std::vector<InstrDefNode>* instrDefs,
                SourceFile* src,
                const std::vector<Token>* tokens,
                ASTFileNode* fileNode,
-               std::vector<LabelDefLookup>* funcDefs)
+               std::vector<LabelDefLookup>* funcDefs,
+               std::vector<VarDeclaration>* varDecls)
     : InstrDefs(instrDefs), Src(src), Tokens(tokens), FileNode(fileNode),
-      LabelDefs(funcDefs){};
+      LabelDefs(funcDefs), VarDecls(varDecls) {};
 
 /**
  * Returns token at current Cursor and increases the Cursor
@@ -690,8 +691,13 @@ bool Parser::buildAST() {
         std::string secName;
         Src->getSubStr(secToken->Index, secToken->Size, secName);
 
-        // TODO: Check for section redefiniton
         if (secName == "static") {
+            if (FileNode->SecStatic != nullptr) {
+                printTokenError("Section 'static' already defined", *secToken);
+                validInput = false;
+                break;
+            }
+
             FileNode->SecStatic = new ASTSection(
                 secToken->Index, secToken->Size, secToken->LineRow,
                 secToken->LineCol, secName, ASTSectionType::STATIC);
@@ -700,6 +706,12 @@ bool Parser::buildAST() {
                 break;
             }
         } else if (secName == "global") {
+            if (FileNode->SecGlobal != nullptr) {
+                printTokenError("Section 'global' already defined", *secToken);
+                validInput = false;
+                break;
+            }
+
             FileNode->SecGlobal = new ASTSection(
                 secToken->Index, secToken->Size, secToken->LineRow,
                 secToken->LineCol, secName, ASTSectionType::GLOBAL);
@@ -708,6 +720,12 @@ bool Parser::buildAST() {
                 break;
             }
         } else if (secName == "code") {
+            if (FileNode->SecCode != nullptr) {
+                printTokenError("Section 'code' already defined", *secToken);
+                validInput = false;
+                break;
+            }
+
             FileNode->SecCode = new ASTSection(
                 secToken->Index, secToken->Size, secToken->LineRow,
                 secToken->LineCol, secName, ASTSectionType::CODE);
@@ -722,6 +740,13 @@ bool Parser::buildAST() {
         }
 
         currentToken = eatToken();
+    }
+
+    // Check if required code section exists
+    if (FileNode->SecCode == nullptr) {
+        // TODO: add color
+        std::cout << "Error: could not find code section\n";
+        return false;
     }
 
     return validInput;
@@ -930,38 +955,85 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
  * Checks if type and values of global and static variables match
  * @return On valid input return true otherwise false
  */
-bool Parser::typeCheckVars() {
+bool Parser::typeCheckVars(ASTSection* sec) {
     bool valid = true;
-    // Create vector contain both static and global vars
-    std::vector<ASTNode*> vars;
-    vars.insert(vars.begin(), FileNode->SecStatic->Body.begin(),
-                FileNode->SecStatic->Body.end());
-    vars.insert(vars.end(), FileNode->SecGlobal->Body.begin(),
-                FileNode->SecGlobal->Body.end());
 
     // Check for variable redefinitons
-    for (ASTNode* node : vars) {
+    for (ASTNode* node : sec->Body) {
         ASTVariable* var = dynamic_cast<ASTVariable*>(node);
 
-        // Look if variable name has already been defined in the range of
-        // already checked vars
-        bool found = false;
-        uint32_t i = 0;
-        ASTVariable* refVar = dynamic_cast<ASTVariable*>(vars[i]);
-        while (refVar != var && i < vars.size()) {
-            if (var->Id->Name == refVar->Id->Name) {
-                found = true;
+        // Check if var has already been declared
+        bool exists = false;
+        for (VarDeclaration& varDecl : *VarDecls) {
+            if (varDecl.Id->Name == var->Id->Name) {
+                exists = true;
                 break;
             }
-            i++;
-            refVar = dynamic_cast<ASTVariable*>(vars[i]);
         }
 
-        if (found) {
+        if (exists) {
             printError(Src, var->Index, var->Size, var->LineRow, var->LineCol,
                        "Variable redefiniton");
             valid = false;
             continue;
+        }
+
+        VarDeclaration varDecl{};
+        varDecl.Id = var->Id;
+
+        switch (sec->SecType) {
+        case ASTSectionType::STATIC:
+            varDecl.SecPerm = SEC_PERM_READ;
+            break;
+        case ASTSectionType::GLOBAL:
+            varDecl.SecPerm = SEC_PERM_READ & SEC_PERM_WRITE;
+            break;
+        case ASTSectionType::CODE:
+            varDecl.SecPerm = SEC_PERM_READ & SEC_PERM_EXECUTE;
+            break;
+        }
+
+        var->VarDeclIndex = VarDecls->size();
+        VarDecls->push_back(varDecl);
+    }
+
+    return valid;
+}
+
+/** 
+ * Checks if all referenced variables are resolved
+ * @return On success returns true otherwise false
+*/
+bool Parser::checkVarRefs() {
+    bool valid = true;
+
+    for (ASTNode* node : FileNode->SecCode->Body) {
+        if (node->Type == ASTType::INSTRUCTION) {
+            Instruction* instr = dynamic_cast<Instruction*>(node);
+            for (ASTNode* instrParam : instr->Params) {
+                if (instrParam->Type == ASTType::REGISTER_OFFSET) {
+                    RegisterOffset* ro =
+                        dynamic_cast<RegisterOffset*>(instrParam);
+                    // If register offset has label as its content check if the
+                    // var exists
+                    if (ro->Var != nullptr) {
+                        bool exists = false;
+                        for (VarDeclaration& decl : *VarDecls) {
+                            if (decl.Id->Name == ro->Var->Name) {
+                                exists = true;
+                                break;
+                            }
+                        }
+
+                        if (!exists) {
+                            printError(Src, ro->Var->Index, ro->Var->Size,
+                                       ro->Var->LineRow, ro->Var->LineCol,
+                                       "Variable reference does not exist");
+                            valid = false;
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -975,11 +1047,19 @@ bool Parser::typeCheckVars() {
 bool Parser::typeCheck() {
     // Tracks if an error occured while type checking
     bool typeCheckError = false;
-    if (!typeCheckVars()) {
-        typeCheckError = true;
+
+    std::vector<ASTSection*> sections = {FileNode->SecStatic, FileNode->SecGlobal};
+    for (ASTSection* sec: sections) {
+        if (sec == nullptr) {
+            continue;
+        }
+
+        if (!typeCheckVars(sec)) {
+            typeCheckError = true;
+        }
     }
 
-    // Check if Global AST node has no children which means the main function is
+    // Check if code section AST node has no children which means the main function is
     // missing for sure
     if (FileNode->SecCode->Body.size() == 0) {
         std::cout << "[Type Checker] Missing main label\n";
@@ -1058,6 +1138,10 @@ bool Parser::typeCheck() {
             typeCheckError = true;
         }
     }
+
+    if (!checkVarRefs()) {
+        typeCheckError = true;
+    };
 
     return !typeCheckError;
 }

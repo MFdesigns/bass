@@ -21,7 +21,24 @@
 #include "token.hpp"
 #include <vector>
 
+constexpr uint8_t SEC_PERM_READ = 0b1000'0000;
+constexpr uint8_t SEC_PERM_WRITE = 0b0100'0000;
+constexpr uint8_t SEC_PERM_EXECUTE = 0b0010'0000;
+
 enum class ParseState { GLOBAL_SCOPE, INSTR_BODY, END };
+
+/**
+ * This keeps track of variable position in memory so that the generator can
+ * resolve references to variables in the code section
+ */
+struct VarDeclaration {
+    /** Virtual address to variable in memory */
+    uint64_t VAddr = 0;
+    /** The variable name which is at this position */
+    Identifier* Id = nullptr;
+    /** Parent sections permission */
+    uint8_t SecPerm = 0;
+};
 
 enum class RegisterType {
     INTEGER,
@@ -37,7 +54,8 @@ class Parser {
            SourceFile* src,
            const std::vector<Token>* tokens,
            ASTFileNode* fileNode,
-           std::vector<LabelDefLookup>* funcDefs);
+           std::vector<LabelDefLookup>* funcDefs,
+           std::vector<VarDeclaration>* varDecls);
     bool buildAST();
     bool typeCheck();
 
@@ -50,6 +68,7 @@ class Parser {
     const std::vector<Token>* Tokens = nullptr;
     /** Vector of non owning pointers to function declarations */
     std::vector<LabelDefLookup>* LabelDefs = nullptr;
+    std::vector<VarDeclaration>* VarDecls;
     /** Non owning pointer to file node node */
     ASTFileNode* FileNode;
     /** Non owning pointer to source file */
@@ -64,5 +83,6 @@ class Parser {
     bool parseSectionCode();
     bool typeCheckInstrParams(Instruction* instr,
                               std::vector<Identifier*>& labelRefs);
-    bool typeCheckVars();
+    bool typeCheckVars(ASTSection* sec);
+    bool checkVarRefs();
 };
