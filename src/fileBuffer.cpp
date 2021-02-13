@@ -24,7 +24,7 @@
  */
 BufferRange::BufferRange(uint32_t start, size_t size)
     : Start(start), Size(size),
-      Buffer(std::make_unique<uint8_t[]>(OutputFileBuffer::BUFFER_SIZE)) {}
+      Buffer(std::make_unique<uint8_t[]>(BUFFER_SIZE)) {}
 
 /**
  * Copy constructs a new BufferRange
@@ -121,7 +121,7 @@ void OutputFileBuffer::push(void* src, size_t size) {
  */
 void OutputFileBuffer::writeToStream(std::ofstream& stream) {
     for (auto& range : Buffers) {
-        size_t writeSize = OutputFileBuffer::BUFFER_SIZE;
+        size_t writeSize = BUFFER_SIZE;
         if (Cursor < range.Start + range.Size) {
             writeSize = Cursor - range.Start;
         }

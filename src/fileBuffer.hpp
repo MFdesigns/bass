@@ -19,6 +19,8 @@
 #include <memory>
 #include <vector>
 
+constexpr uint32_t BUFFER_SIZE = 1024;
+
 struct BufferRange {
     uint64_t Start;
     size_t Size;
@@ -30,7 +32,6 @@ struct BufferRange {
 
 class OutputFileBuffer {
   public:
-    static const uint32_t BUFFER_SIZE = 1024;
     void reserve(size_t size);
     void push(void* src, size_t size);
     void write(size_t index, void* src, size_t size);
