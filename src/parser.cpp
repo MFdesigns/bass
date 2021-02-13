@@ -18,6 +18,7 @@
 #include "asm/asm.hpp"
 #include "asm/encoding.hpp"
 #include "cli.hpp"
+#include <cfloat>
 #include <iomanip>
 #include <iostream>
 
@@ -146,7 +147,7 @@ Parser::Parser(std::vector<InstrDefNode>* instrDefs,
                std::vector<LabelDefLookup>* funcDefs,
                std::vector<VarDeclaration>* varDecls)
     : InstrDefs(instrDefs), Src(src), Tokens(tokens), FileNode(fileNode),
-      LabelDefs(funcDefs), VarDecls(varDecls) {};
+      LabelDefs(funcDefs), VarDecls(varDecls){};
 
 /**
  * Returns token at current Cursor and increases the Cursor
@@ -637,7 +638,8 @@ bool Parser::parseSectionCode() {
 
                     double num = 0;
                     if (!strToFP(floatStr, num)) {
-                        printTokenError( "Float does not fit into 64-bit value", *t);
+                        printTokenError("Float does not fit into 64-bit value",
+                                        *t);
                         return false;
                     }
 
@@ -813,8 +815,8 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
                     typeInfo->DataType != UVM_TYPE_I16 &&
                     typeInfo->DataType != UVM_TYPE_I32 &&
                     typeInfo->DataType != UVM_TYPE_I64) {
-                    printError(Src, typeInfo->Index, typeInfo->Size, typeInfo->LineRow,
-                               typeInfo->LineCol,
+                    printError(Src, typeInfo->Index, typeInfo->Size,
+                               typeInfo->LineRow, typeInfo->LineCol,
                                "Expected int type found float type");
                     break;
                 }
@@ -828,8 +830,8 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
                 TypeInfo* typeInfo = dynamic_cast<TypeInfo*>(astNode);
                 if (typeInfo->DataType != UVM_TYPE_F32 &&
                     typeInfo->DataType != UVM_TYPE_F64) {
-                    printError(Src, typeInfo->Index, typeInfo->Size, typeInfo->LineRow,
-                               typeInfo->LineCol,
+                    printError(Src, typeInfo->Index, typeInfo->Size,
+                               typeInfo->LineRow, typeInfo->LineCol,
                                "Expected float type found int type");
                     break;
                 }
@@ -1012,7 +1014,7 @@ bool Parser::typeCheckVars(ASTSection* sec) {
 /**
  * Checks if all referenced variables are resolved
  * @return On success returns true otherwise false
-*/
+ */
 bool Parser::checkVarRefs() {
     bool valid = true;
 
@@ -1057,8 +1059,9 @@ bool Parser::typeCheck() {
     // Tracks if an error occured while type checking
     bool typeCheckError = false;
 
-    std::vector<ASTSection*> sections = {FileNode->SecStatic, FileNode->SecGlobal};
-    for (ASTSection* sec: sections) {
+    std::vector<ASTSection*> sections = {FileNode->SecStatic,
+                                         FileNode->SecGlobal};
+    for (ASTSection* sec : sections) {
         if (sec == nullptr) {
             continue;
         }
@@ -1068,8 +1071,8 @@ bool Parser::typeCheck() {
         }
     }
 
-    // Check if code section AST node has no children which means the main function is
-    // missing for sure
+    // Check if code section AST node has no children which means the main
+    // function is missing for sure
     if (FileNode->SecCode->Body.size() == 0) {
         std::cout << "[Type Checker] Missing main label\n";
         return false;

@@ -17,10 +17,10 @@
 #pragma once
 #include "ast.hpp"
 #include "fileBuffer.hpp"
+#include "parser.hpp"
 #include <cstdint>
 #include <filesystem>
 #include <vector>
-#include "parser.hpp"
 
 constexpr uint8_t SEC_NAME_STRINGS = 0x1;
 constexpr uint8_t SEC_META_DATA = 0x2;

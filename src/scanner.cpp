@@ -270,7 +270,8 @@ bool Scanner::scanNumber(uint32_t& outSize, bool& isFloat) {
                 isFloat = true;
                 outSize++;
             } else if (c == 'e' || c == 'E') {
-                // If preceding number have a comma '.' in it number is a float otherwise an integer
+                // If preceding number have a comma '.' in it number is a float
+                // otherwise an integer
                 if (!isFloat) {
                     validNumber = false;
                     break;

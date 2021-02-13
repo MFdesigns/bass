@@ -32,7 +32,7 @@ Generator::Generator(ASTFileNode* ast,
                      std::filesystem::path* p,
                      std::vector<LabelDefLookup>* funcDefs,
                      std::vector<VarDeclaration>* varDecls)
-    : AST(ast), FilePath(p), LabelDefs(funcDefs), VarDecls(varDecls) { }
+    : AST(ast), FilePath(p), LabelDefs(funcDefs), VarDecls(varDecls) {}
 
 void Generator::createHeader() {
     // Allocate header
@@ -46,9 +46,11 @@ void Generator::createHeader() {
 }
 
 void Generator::createSectionTable() {
-    // Figure out how many sections are actually defined and not empty. Start at count 1 because section of section name strings is alawys there
+    // Figure out how many sections are actually defined and not empty. Start at
+    // count 1 because section of section name strings is alawys there
     uint32_t secTableCount = 1;
-    std::vector<ASTSection*> sections = {AST->SecStatic, AST->SecGlobal, AST->SecCode};
+    std::vector<ASTSection*> sections = {AST->SecStatic, AST->SecGlobal,
+                                         AST->SecCode};
 
     // Add section name strings section
     GenSection secNameStrs{};
@@ -59,7 +61,7 @@ void Generator::createSectionTable() {
     uint32_t secNameStrsIndex = Sections.size();
     Sections.push_back(secNameStrs);
 
-    for (const ASTSection* sec: sections) {
+    for (const ASTSection* sec : sections) {
         if (sec != nullptr) {
             if (sec->Body.size() > 0) {
                 GenSection secEntry{};
@@ -67,20 +69,20 @@ void Generator::createSectionTable() {
                 uint8_t secPerms = 0;
 
                 switch (sec->SecType) {
-                    case ASTSectionType::STATIC:
+                case ASTSectionType::STATIC:
                     secEntry.Type = SEC_STATIC;
-                        secName = "Static";
+                    secName = "Static";
                     secPerms = SEC_PERM_READ;
                     break;
-                    case ASTSectionType::GLOBAL:
-                        secEntry.Type = SEC_GLOBAL;
-                        secName = "Global";
-                        secPerms = SEC_PERM_READ & SEC_PERM_WRITE;
+                case ASTSectionType::GLOBAL:
+                    secEntry.Type = SEC_GLOBAL;
+                    secName = "Global";
+                    secPerms = SEC_PERM_READ | SEC_PERM_WRITE;
                     break;
-                    case ASTSectionType::CODE:
-                        secEntry.Type = SEC_CODE;
-                        secName = "Code";
-                        secPerms = SEC_PERM_READ & SEC_PERM_EXECUTE;
+                case ASTSectionType::CODE:
+                    secEntry.Type = SEC_CODE;
+                    secName = "Code";
+                    secPerms = SEC_PERM_READ | SEC_PERM_EXECUTE;
                     break;
                 }
 
