@@ -763,7 +763,7 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
     bool error = false;
     // This is a reference used to tag every float/int paramter with the correct
     // type and select the correct opcode variant. This assumes that there can
-    // only ever be one TypeInfo in the paramters of an instruction.
+    // only ever be one TypeInfo in the parameters of an instruction.
     TypeInfo* type = nullptr;
     for (uint32_t i = 0; i < instr->Params.size(); i++) {
         InstrDefNode* nextNode = nullptr;
@@ -779,7 +779,7 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
                     typeInfo->DataType != UVM_TYPE_I16 &&
                     typeInfo->DataType != UVM_TYPE_I32 &&
                     typeInfo->DataType != UVM_TYPE_I64) {
-                    printError(Src, typeInfo->Index, 3, typeInfo->LineRow,
+                    printError(Src, typeInfo->Index, typeInfo->Size, typeInfo->LineRow,
                                typeInfo->LineCol,
                                "Expected int type found float type");
                     break;
@@ -794,7 +794,7 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
                 TypeInfo* typeInfo = dynamic_cast<TypeInfo*>(astNode);
                 if (typeInfo->DataType != UVM_TYPE_F32 &&
                     typeInfo->DataType != UVM_TYPE_F64) {
-                    printError(Src, typeInfo->Index, 3, typeInfo->LineRow,
+                    printError(Src, typeInfo->Index, typeInfo->Size, typeInfo->LineRow,
                                typeInfo->LineCol,
                                "Expected float type found int type");
                     break;
@@ -816,7 +816,7 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
                 }
                 RegisterId* regId = dynamic_cast<RegisterId*>(astNode);
                 if (getRegisterType(regId->Id) != RegisterType::INTEGER) {
-                    printError(Src, regId->Index, 3, regId->LineRow,
+                    printError(Src, regId->Index, regId->Size, regId->LineRow,
                                regId->LineCol, "Expected integer register");
                     break;
                 }
@@ -828,7 +828,7 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
                 }
                 RegisterId* regId = dynamic_cast<RegisterId*>(astNode);
                 if (getRegisterType(regId->Id) != RegisterType::FLOAT) {
-                    printError(Src, regId->Index, 3, regId->LineRow,
+                    printError(Src, regId->Index, regId->Size, regId->LineRow,
                                regId->LineCol, "Expected float register");
                     break;
                 }
