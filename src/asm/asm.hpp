@@ -64,11 +64,6 @@ enum class InstrParamType {
     SYS_INT,
 };
 
-struct InstrNameDef {
-    const char* Str;
-    uint8_t Id;
-};
-
 struct TypeVariant {
     uint8_t Type;
     uint8_t Opcode;
