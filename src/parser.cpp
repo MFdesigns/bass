@@ -81,7 +81,9 @@ bool checkFloatWidth(double num, uint8_t type) {
         }
         break;
     case UVM_TYPE_F64:
-        fits = true;
+        if (num <= DBL_MAX) {
+            fits = true;
+        }
         break;
     }
     return fits;
@@ -119,10 +121,11 @@ bool strToInt(std::string& str, uint64_t& num) {
  * otherwhise false
  */
 bool strToFP(std::string& str, double& num) {
-    // If string float is bigger than 64-bit exception is thrown.
     try {
-        num = std::stod(str, 0);
-    } catch (const std::out_of_range) {
+        num = std::stod(str, nullptr);
+    } catch (const std::out_of_range& e) {
+        return false;
+    } catch (const std::invalid_argument& e) {
         return false;
     }
     return true;
@@ -631,7 +634,13 @@ bool Parser::parseSectionCode() {
                 case TokenType::FLOAT_NUMBER: {
                     std::string floatStr;
                     Src->getSubStr(t->Index, t->Size, floatStr);
-                    double num = std::atof(floatStr.c_str());
+
+                    double num = 0;
+                    if (!strToFP(floatStr, num)) {
+                        printTokenError( "Float does not fit into 64-bit value", *t);
+                        return false;
+                    }
+
                     ASTFloat* iNum = new ASTFloat(t->Index, t->Size, t->LineRow,
                                                   t->LineCol, num);
                     instr->Params.push_back(iNum);
@@ -1000,7 +1009,7 @@ bool Parser::typeCheckVars(ASTSection* sec) {
     return valid;
 }
 
-/** 
+/**
  * Checks if all referenced variables are resolved
  * @return On success returns true otherwise false
 */

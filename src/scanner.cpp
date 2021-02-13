@@ -253,20 +253,35 @@ bool Scanner::scanNumber(uint32_t& outSize, bool& isFloat) {
         }
 
     } else {
+        bool hasExponent = false;
         // Parse dec or float number until terminated by [ \n\t,\r\]]
         while (validNumber) {
             // Valid dec or float number [0-9]+
             if (c >= '0' && c <= '9') {
                 outSize++;
-                // If number contains dot '.' number is a float. If number
-                // contains more than one dot '.' number is invalid
             } else if (c == '.') {
+                // If number contains comma '.' number is a float. If number
+                // contains more than one comma '.' number is invalid
                 if (isFloat) {
                     validNumber = false;
                     break;
                 }
 
                 isFloat = true;
+                outSize++;
+            } else if (c == 'e' || c == 'E') {
+                // If preceding number have a comma '.' in it number is a float otherwise an integer
+                if (!isFloat) {
+                    validNumber = false;
+                    break;
+                }
+
+                // e might be followed by + or - sign
+                if (peek == '+' || peek == '-') {
+                    c = eatChar();
+                    outSize++;
+                }
+                hasExponent = true;
                 outSize++;
             } else {
                 validNumber = false;
