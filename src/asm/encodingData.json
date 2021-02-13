@@ -759,7 +759,7 @@
                     ]
                 },
                 {
-                    "opcode": "0x5C",
+                    "opcode": "0x5D",
                     "encodeType": true,
                     "params": [
                         "iT",
@@ -880,7 +880,7 @@
                     ]
                 },
                 {
-                    "opcode": "0x6C",
+                    "opcode": "0x6D",
                     "encodeType": true,
                     "params": [
                         "iT",
@@ -908,35 +908,24 @@
         },
         {
             "opcode": "",
-            "name": "and",
+            "name": "mod",
             "paramList": [
                 {
-                    "opcode": "0x71",
-                    "encodeType": false,
+                    "opcode": "0x96",
+                    "encodeType": true,
                     "params": [
                         "iT",
-                        "int",
+                        "iReg",
                         "iReg"
                     ],
-                    "typeVariants": [
-                        {
-                            "type": "i8",
-                            "opcode": "0x71"
-                        },
-                        {
-                            "type": "i16",
-                            "opcode": "0x72"
-                        },
-                        {
-                            "type": "i32",
-                            "opcode": "0x73"
-                        },
-                        {
-                            "type": "i64",
-                            "opcode": "0x74"
-                        }
-                    ]
-                },
+                    "typeVariants": []
+                }
+            ]
+        },
+        {
+            "opcode": "",
+            "name": "and",
+            "paramList": [
                 {
                     "opcode": "0x75",
                     "encodeType": true,
@@ -954,33 +943,6 @@
             "name": "or",
             "paramList": [
                 {
-                    "opcode": "0x81",
-                    "encodeType": false,
-                    "params": [
-                        "iT",
-                        "int",
-                        "iReg"
-                    ],
-                    "typeVariants": [
-                        {
-                            "type": "i8",
-                            "opcode": "0x81"
-                        },
-                        {
-                            "type": "i16",
-                            "opcode": "0x82"
-                        },
-                        {
-                            "type": "i32",
-                            "opcode": "0x83"
-                        },
-                        {
-                            "type": "i64",
-                            "opcode": "0x84"
-                        }
-                    ]
-                },
-                {
                     "opcode": "0x85",
                     "encodeType": true,
                     "params": [
@@ -996,33 +958,6 @@
             "opcode": "",
             "name": "xor",
             "paramList": [
-                {
-                    "opcode": "0x91",
-                    "encodeType": false,
-                    "params": [
-                        "iT",
-                        "int",
-                        "iReg"
-                    ],
-                    "typeVariants": [
-                        {
-                            "type": "i8",
-                            "opcode": "0x91"
-                        },
-                        {
-                            "type": "i16",
-                            "opcode": "0x92"
-                        },
-                        {
-                            "type": "i32",
-                            "opcode": "0x93"
-                        },
-                        {
-                            "type": "i64",
-                            "opcode": "0x94"
-                        }
-                    ]
-                },
                 {
                     "opcode": "0x95",
                     "encodeType": true,
@@ -1040,38 +975,10 @@
             "name": "not",
             "paramList": [
                 {
-                    "opcode": "0xA1",
-                    "encodeType": false,
-                    "params": [
-                        "iT",
-                        "int",
-                        "iReg"
-                    ],
-                    "typeVariants": [
-                        {
-                            "type": "i8",
-                            "opcode": "0xA1"
-                        },
-                        {
-                            "type": "i16",
-                            "opcode": "0xA2"
-                        },
-                        {
-                            "type": "i32",
-                            "opcode": "0xA3"
-                        },
-                        {
-                            "type": "i64",
-                            "opcode": "0xA4"
-                        }
-                    ]
-                },
-                {
                     "opcode": "0xA5",
                     "encodeType": true,
                     "params": [
                         "iT",
-                        "iReg",
                         "iReg"
                     ],
                     "typeVariants": []
@@ -1086,7 +993,7 @@
                     "opcode": "0x76",
                     "encodeType": false,
                     "params": [
-                        "int",
+                        "iReg",
                         "iReg"
                     ],
                     "typeVariants": []
@@ -1101,7 +1008,7 @@
                     "opcode": "0x77",
                     "encodeType": false,
                     "params": [
-                        "int",
+                        "iReg",
                         "iReg"
                     ],
                     "typeVariants": []
@@ -1116,7 +1023,7 @@
                     "opcode": "0x78",
                     "encodeType": false,
                     "params": [
-                        "int",
+                        "iReg",
                         "iReg"
                     ],
                     "typeVariants": []
@@ -1240,7 +1147,7 @@
             "name": "i2f",
             "paramList": [
                 {
-                    "opcode": "0xB2",
+                    "opcode": "0xB5",
                     "encodeType": false,
                     "params": [
                         "iReg",
@@ -1308,36 +1215,6 @@
                         "iReg"
                     ],
                     "typeVariants": []
-                },
-                {
-                    "opcode": "0xD2",
-                    "encodeType": true,
-                    "params": [
-                        "iT",
-                        "iReg",
-                        "RO"
-                    ],
-                    "typeVariants": []
-                },
-                {
-                    "opcode": "0xD3",
-                    "encodeType": true,
-                    "params": [
-                        "iT",
-                        "RO",
-                        "RO"
-                    ],
-                    "typeVariants": []
-                },
-                {
-                    "opcode": "0xD4",
-                    "encodeType": true,
-                    "params": [
-                        "iT",
-                        "RO",
-                        "iReg"
-                    ],
-                    "typeVariants": []
                 }
             ]
         },
@@ -1347,40 +1224,10 @@
             "paramList": [
                 {
                     "opcode": "0xD5",
-                    "encodeType": false,
+                    "encodeType": true,
                     "params": [
                         "fT",
                         "fReg",
-                        "fReg"
-                    ],
-                    "typeVariants": []
-                },
-                {
-                    "opcode": "0xD6",
-                    "encodeType": false,
-                    "params": [
-                        "fT",
-                        "fReg",
-                        "RO"
-                    ],
-                    "typeVariants": []
-                },
-                {
-                    "opcode": "0xD7",
-                    "encodeType": false,
-                    "params": [
-                        "fT",
-                        "RO",
-                        "RO"
-                    ],
-                    "typeVariants": []
-                },
-                {
-                    "opcode": "0xD8",
-                    "encodeType": false,
-                    "params": [
-                        "fT",
-                        "RO",
                         "fReg"
                     ],
                     "typeVariants": []

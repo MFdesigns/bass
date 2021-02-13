@@ -86,40 +86,43 @@ const std::map<std::string, uint8_t> INSTR_NAMES {
     {"subf", 17},
     {"mul", 18},
     {"mulf", 19},
-    {"div", 20},
-    {"divf", 21},
-    {"sqrt", 22},
-    {"and", 23},
-    {"or", 24},
-    {"xor", 25},
-    {"not", 26},
-    {"lsh", 27},
-    {"rsh", 28},
-    {"srsh", 29},
-    {"b2l", 30},
-    {"s2l", 31},
-    {"i2l", 32},
-    {"b2sl", 33},
-    {"s2sl", 34},
-    {"i2sl", 35},
-    {"f2d", 36},
-    {"d2f", 37},
-    {"i2f", 38},
-    {"i2d", 39},
-    {"f2i", 40},
-    {"d2i", 41},
-    {"cmp", 42},
-    {"cmpf", 43},
-    {"jmp", 44},
-    {"je", 45},
-    {"jne", 46},
-    {"jgt", 47},
-    {"jlt", 48},
-    {"jge", 49},
-    {"jle", 50},
+    {"muls", 20},
+    {"div", 21},
+    {"divf", 22},
+    {"divs", 23},
+    {"sqrt", 24},
+    {"mod", 25},
+    {"and", 26},
+    {"or", 27},
+    {"xor", 28},
+    {"not", 29},
+    {"lsh", 30},
+    {"rsh", 31},
+    {"srsh", 32},
+    {"b2l", 33},
+    {"s2l", 34},
+    {"i2l", 35},
+    {"b2sl", 36},
+    {"s2sl", 37},
+    {"i2sl", 38},
+    {"f2d", 39},
+    {"d2f", 40},
+    {"i2f", 41},
+    {"i2d", 42},
+    {"f2i", 43},
+    {"d2i", 44},
+    {"cmp", 45},
+    {"cmpf", 46},
+    {"jmp", 47},
+    {"je", 48},
+    {"jne", 49},
+    {"jgt", 50},
+    {"jlt", 51},
+    {"jge", 52},
+    {"jle", 53},
 };
 
-const std::array<std::vector<InstrParamList>, 51> INSTR_ASM_DEFS {
+const std::array<std::vector<InstrParamList>, 54> INSTR_ASM_DEFS {
     std::vector<InstrParamList>{
         InstrParamList{
             0xA0,
@@ -499,6 +502,30 @@ const std::array<std::vector<InstrParamList>, 51> INSTR_ASM_DEFS {
     },
     std::vector<InstrParamList>{
         InstrParamList{
+            0x59,
+            INSTR_FLAG_TYPE_VARIANTS,
+            {
+                InstrParamType::INT_TYPE, InstrParamType::INT_REG, InstrParamType::INT_NUM, 
+            },
+            {
+                {UVM_TYPE_I8, 0x59},
+                {UVM_TYPE_I16, 0x5A},
+                {UVM_TYPE_I32, 0x5B},
+                {UVM_TYPE_I64, 0x5C},
+            },
+        },
+        InstrParamList{
+            0x5D,
+            INSTR_FLAG_ENCODE_TYPE,
+            {
+                InstrParamType::INT_TYPE, InstrParamType::INT_REG, InstrParamType::INT_REG, 
+            },
+            {
+            },
+        },
+    },
+    std::vector<InstrParamList>{
+        InstrParamList{
             0x61,
             INSTR_FLAG_TYPE_VARIANTS,
             {
@@ -545,6 +572,30 @@ const std::array<std::vector<InstrParamList>, 51> INSTR_ASM_DEFS {
     },
     std::vector<InstrParamList>{
         InstrParamList{
+            0x69,
+            INSTR_FLAG_TYPE_VARIANTS,
+            {
+                InstrParamType::INT_TYPE, InstrParamType::INT_REG, InstrParamType::INT_NUM, 
+            },
+            {
+                {UVM_TYPE_I8, 0x69},
+                {UVM_TYPE_I16, 0x6A},
+                {UVM_TYPE_I32, 0x6B},
+                {UVM_TYPE_I64, 0x6C},
+            },
+        },
+        InstrParamList{
+            0x6D,
+            INSTR_FLAG_ENCODE_TYPE,
+            {
+                InstrParamType::INT_TYPE, InstrParamType::INT_REG, InstrParamType::INT_REG, 
+            },
+            {
+            },
+        },
+    },
+    std::vector<InstrParamList>{
+        InstrParamList{
             0x86,
             INSTR_FLAG_ENCODE_TYPE,
             {
@@ -556,18 +607,16 @@ const std::array<std::vector<InstrParamList>, 51> INSTR_ASM_DEFS {
     },
     std::vector<InstrParamList>{
         InstrParamList{
-            0x71,
-            INSTR_FLAG_TYPE_VARIANTS,
+            0x96,
+            INSTR_FLAG_ENCODE_TYPE,
             {
-                InstrParamType::INT_TYPE, InstrParamType::INT_NUM, InstrParamType::INT_REG, 
+                InstrParamType::INT_TYPE, InstrParamType::INT_REG, InstrParamType::INT_REG, 
             },
             {
-                {UVM_TYPE_I8, 0x71},
-                {UVM_TYPE_I16, 0x72},
-                {UVM_TYPE_I32, 0x73},
-                {UVM_TYPE_I64, 0x74},
             },
         },
+    },
+    std::vector<InstrParamList>{
         InstrParamList{
             0x75,
             INSTR_FLAG_ENCODE_TYPE,
@@ -580,19 +629,6 @@ const std::array<std::vector<InstrParamList>, 51> INSTR_ASM_DEFS {
     },
     std::vector<InstrParamList>{
         InstrParamList{
-            0x81,
-            INSTR_FLAG_TYPE_VARIANTS,
-            {
-                InstrParamType::INT_TYPE, InstrParamType::INT_NUM, InstrParamType::INT_REG, 
-            },
-            {
-                {UVM_TYPE_I8, 0x81},
-                {UVM_TYPE_I16, 0x82},
-                {UVM_TYPE_I32, 0x83},
-                {UVM_TYPE_I64, 0x84},
-            },
-        },
-        InstrParamList{
             0x85,
             INSTR_FLAG_ENCODE_TYPE,
             {
@@ -603,19 +639,6 @@ const std::array<std::vector<InstrParamList>, 51> INSTR_ASM_DEFS {
         },
     },
     std::vector<InstrParamList>{
-        InstrParamList{
-            0x91,
-            INSTR_FLAG_TYPE_VARIANTS,
-            {
-                InstrParamType::INT_TYPE, InstrParamType::INT_NUM, InstrParamType::INT_REG, 
-            },
-            {
-                {UVM_TYPE_I8, 0x91},
-                {UVM_TYPE_I16, 0x92},
-                {UVM_TYPE_I32, 0x93},
-                {UVM_TYPE_I64, 0x94},
-            },
-        },
         InstrParamList{
             0x95,
             INSTR_FLAG_ENCODE_TYPE,
@@ -628,23 +651,10 @@ const std::array<std::vector<InstrParamList>, 51> INSTR_ASM_DEFS {
     },
     std::vector<InstrParamList>{
         InstrParamList{
-            0xA1,
-            INSTR_FLAG_TYPE_VARIANTS,
-            {
-                InstrParamType::INT_TYPE, InstrParamType::INT_NUM, InstrParamType::INT_REG, 
-            },
-            {
-                {UVM_TYPE_I8, 0xA1},
-                {UVM_TYPE_I16, 0xA2},
-                {UVM_TYPE_I32, 0xA3},
-                {UVM_TYPE_I64, 0xA4},
-            },
-        },
-        InstrParamList{
             0xA5,
             INSTR_FLAG_ENCODE_TYPE,
             {
-                InstrParamType::INT_TYPE, InstrParamType::INT_REG, InstrParamType::INT_REG, 
+                InstrParamType::INT_TYPE, InstrParamType::INT_REG, 
             },
             {
             },
@@ -655,7 +665,7 @@ const std::array<std::vector<InstrParamList>, 51> INSTR_ASM_DEFS {
             0x76,
             0,
             {
-                InstrParamType::INT_NUM, InstrParamType::INT_REG, 
+                InstrParamType::INT_REG, InstrParamType::INT_REG, 
             },
             {
             },
@@ -666,7 +676,7 @@ const std::array<std::vector<InstrParamList>, 51> INSTR_ASM_DEFS {
             0x77,
             0,
             {
-                InstrParamType::INT_NUM, InstrParamType::INT_REG, 
+                InstrParamType::INT_REG, InstrParamType::INT_REG, 
             },
             {
             },
@@ -677,7 +687,7 @@ const std::array<std::vector<InstrParamList>, 51> INSTR_ASM_DEFS {
             0x78,
             0,
             {
-                InstrParamType::INT_NUM, InstrParamType::INT_REG, 
+                InstrParamType::INT_REG, InstrParamType::INT_REG, 
             },
             {
             },
@@ -773,7 +783,7 @@ const std::array<std::vector<InstrParamList>, 51> INSTR_ASM_DEFS {
     },
     std::vector<InstrParamList>{
         InstrParamList{
-            0xB2,
+            0xB5,
             0,
             {
                 InstrParamType::INT_REG, InstrParamType::FLOAT_REG, 
@@ -825,67 +835,13 @@ const std::array<std::vector<InstrParamList>, 51> INSTR_ASM_DEFS {
             {
             },
         },
-        InstrParamList{
-            0xD2,
-            INSTR_FLAG_ENCODE_TYPE,
-            {
-                InstrParamType::INT_TYPE, InstrParamType::INT_REG, InstrParamType::REG_OFFSET, 
-            },
-            {
-            },
-        },
-        InstrParamList{
-            0xD3,
-            INSTR_FLAG_ENCODE_TYPE,
-            {
-                InstrParamType::INT_TYPE, InstrParamType::REG_OFFSET, InstrParamType::REG_OFFSET, 
-            },
-            {
-            },
-        },
-        InstrParamList{
-            0xD4,
-            INSTR_FLAG_ENCODE_TYPE,
-            {
-                InstrParamType::INT_TYPE, InstrParamType::REG_OFFSET, InstrParamType::INT_REG, 
-            },
-            {
-            },
-        },
     },
     std::vector<InstrParamList>{
         InstrParamList{
             0xD5,
-            0,
+            INSTR_FLAG_ENCODE_TYPE,
             {
                 InstrParamType::FLOAT_TYPE, InstrParamType::FLOAT_REG, InstrParamType::FLOAT_REG, 
-            },
-            {
-            },
-        },
-        InstrParamList{
-            0xD6,
-            0,
-            {
-                InstrParamType::FLOAT_TYPE, InstrParamType::FLOAT_REG, InstrParamType::REG_OFFSET, 
-            },
-            {
-            },
-        },
-        InstrParamList{
-            0xD7,
-            0,
-            {
-                InstrParamType::FLOAT_TYPE, InstrParamType::REG_OFFSET, InstrParamType::REG_OFFSET, 
-            },
-            {
-            },
-        },
-        InstrParamList{
-            0xD8,
-            0,
-            {
-                InstrParamType::FLOAT_TYPE, InstrParamType::REG_OFFSET, InstrParamType::FLOAT_REG, 
             },
             {
             },
