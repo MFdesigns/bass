@@ -513,7 +513,9 @@ bool Scanner::scanSource() {
                 incLineRow();
             } break;
             case '/': {
+                char c = ' ';
                 char peek = peekChar();
+                // Single line comment
                 if (peek == '/') {
                     incCursor();
                     peek = peekChar();
@@ -521,6 +523,16 @@ bool Scanner::scanSource() {
                         incCursor();
                         peek = peekChar();
                     }
+                    // Multiline comment
+                } else if (peek == '*') {
+                    incCursor();
+                    c = eatChar();
+                    peek = peekChar();
+                    while (c != '*' && peek != '\\' && peek != 0) {
+                        c = eatChar();
+                        peek = peekChar();
+                    }
+                    incCursor();
                 } else {
                     validSource = false;
                     skipLine();
