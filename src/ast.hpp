@@ -140,9 +140,11 @@ class ASTInt : public ASTNode {
            uint32_t size,
            uint32_t lineNr,
            uint32_t lineCol,
-           int64_t num);
+           int64_t num,
+           bool isSigned);
     int64_t Num;
     uint8_t DataType;
+    bool IsSigned = false;
 };
 
 class RegisterId : public ASTNode {

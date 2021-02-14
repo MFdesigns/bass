@@ -19,6 +19,7 @@
 #include "asm/encoding.hpp"
 #include "cli.hpp"
 #include <cfloat>
+#include <cmath>
 #include <iomanip>
 #include <iostream>
 
@@ -41,8 +42,13 @@ RegisterType getRegisterType(uint8_t regId) {
  * @param type Target type
  * @return On success returns true otherwise false
  */
-bool checkIntWidth(uint64_t num, uint8_t type) {
+bool checkIntWidth(uint64_t num, uint8_t type, bool isSigned) {
     bool fits = false;
+
+    if (isSigned) {
+        num = std::abs(static_cast<int64_t>(num));
+    }
+
     switch (type) {
     case UVM_TYPE_I8:
         if (num <= 0xFF) {
@@ -441,8 +447,17 @@ bool Parser::parseSectionVars(ASTSection* sec) {
             validSec = false;
             break;
         }
-
         tok = eatToken();
+
+        Token* signToken = nullptr;
+        char signTokenText = '\0';
+        if (tok->Type == TokenType::PLUS_SIGN ||
+            tok->Type == TokenType::MINUS_SIGN) {
+            signToken = tok;
+            Src->getChar(signToken->Index, signTokenText);
+            tok = eatToken();
+        }
+
         std::string tokString;
         Src->getSubStr(tok->Index, tok->Size, tokString);
 
@@ -453,15 +468,30 @@ bool Parser::parseSectionVars(ASTSection* sec) {
                                            tok->LineCol, parsedStr);
             val = dynamic_cast<ASTNode*>(str);
         } else if (tok->Type == TokenType::INTEGER_NUMBER) {
-            uint64_t intVal = 0;
+            bool isSigned = false;
+            // Check if sign token +/- is followed immediately by number. If so
+            // insert +/- into token string to convert it to an number
+            if (signToken != nullptr) {
+                if (signToken->Index + 1 == tok->Index) {
+                    tokString.insert(0, 1, signTokenText);
+                    if (signToken->Type == TokenType::MINUS_SIGN) {
+                        isSigned = true;
+                    }
+                } else {
+                    printTokenError("Unexpected operator", *signToken);
+                    validSec = false;
+                    break;
+                }
+            }
 
+            uint64_t intVal = 0;
             if (!strToInt(tokString, intVal)) {
                 printTokenError("Integer does not fit into 64-bit value", *tok);
                 validSec = false;
                 break;
             }
 
-            if (!checkIntWidth(intVal, typeInfo->DataType)) {
+            if (!checkIntWidth(intVal, typeInfo->DataType, isSigned)) {
                 printTokenError("Integer does not fit into given type value",
                                 *tok);
                 validSec = false;
@@ -469,9 +499,21 @@ bool Parser::parseSectionVars(ASTSection* sec) {
             }
 
             ASTInt* integer = new ASTInt(tok->Index, tok->Size, tok->LineRow,
-                                         tok->LineCol, intVal);
+                                         tok->LineCol, intVal, isSigned);
             val = dynamic_cast<ASTNode*>(integer);
         } else if (tok->Type == TokenType::FLOAT_NUMBER) {
+            // Check if sign token +/- is followed immediately by number. If so
+            // insert +/- into token string to convert it to an number
+            if (signToken != nullptr) {
+                if (signToken->Index + 1 == tok->Index) {
+                    tokString.insert(0, 1, signTokenText);
+                } else {
+                    printTokenError("Unexpected operator", *signToken);
+                    validSec = false;
+                    break;
+                }
+            }
+
             double floatVal = 0;
             if (!strToFP(tokString, floatVal)) {
                 printTokenError(
@@ -598,6 +640,24 @@ bool Parser::parseSectionCode() {
             }
 
             while (!endOfParamList) {
+                Token* signToken = nullptr;
+                char signTokenText = '\0';
+                if (t->Type == TokenType::PLUS_SIGN ||
+                    t->Type == TokenType::MINUS_SIGN) {
+                    signToken = t;
+                    Src->getChar(signToken->Index, signTokenText);
+                    t = eatToken();
+                }
+
+                // Sign token must be followed by an integer or float number in
+                // the code section otherwise print an error
+                if (signToken != nullptr &&
+                    (t->Type != TokenType::INTEGER_NUMBER &&
+                     t->Type != TokenType::FLOAT_NUMBER)) {
+                    printTokenError("Unexpected operator", *signToken);
+                    return false;
+                }
+
                 switch (t->Type) {
                 case TokenType::IDENTIFIER: {
                     std::string idName;
@@ -620,6 +680,23 @@ bool Parser::parseSectionCode() {
                 case TokenType::INTEGER_NUMBER: {
                     std::string numStr;
                     Src->getSubStr(t->Index, t->Size, numStr);
+
+                    bool isSigned = false;
+                    // Check if sign token +/- is followed immediately by
+                    // number. If so insert +/- into token string to convert it
+                    // to an number
+                    if (signToken != nullptr) {
+                        if (signToken->Index + 1 == t->Index) {
+                            numStr.insert(0, 1, signTokenText);
+                            if (signToken->Type == TokenType::MINUS_SIGN) {
+                                isSigned = true;
+                            }
+                        } else {
+                            printTokenError("Unexpected operator", *signToken);
+                            return false;
+                        }
+                    }
+
                     uint64_t num = 0;
 
                     if (!strToInt(numStr, num)) {
@@ -629,12 +706,24 @@ bool Parser::parseSectionCode() {
                     }
 
                     ASTInt* iNum = new ASTInt(t->Index, t->Size, t->LineRow,
-                                              t->LineCol, num);
+                                              t->LineCol, num, isSigned);
                     instr->Params.push_back(iNum);
                 } break;
                 case TokenType::FLOAT_NUMBER: {
                     std::string floatStr;
                     Src->getSubStr(t->Index, t->Size, floatStr);
+
+                    // Check if sign token +/- is followed immediately by
+                    // number. If so insert +/- into token string to convert it
+                    // to an number
+                    if (signToken != nullptr) {
+                        if (signToken->Index + 1 == t->Index) {
+                            floatStr.insert(0, 1, signTokenText);
+                        } else {
+                            printTokenError("Unexpected operator", *signToken);
+                            return false;
+                        }
+                    }
 
                     double num = 0;
                     if (!strToFP(floatStr, num)) {
@@ -883,7 +972,7 @@ bool Parser::typeCheckInstrParams(Instruction* instr,
 
                 ASTInt* num = dynamic_cast<ASTInt*>(astNode);
                 num->DataType = type->DataType;
-                if (!checkIntWidth(num->Num, num->DataType)) {
+                if (!checkIntWidth(num->Num, num->DataType, num->IsSigned)) {
                     printError(Src, num->Index, num->Size, num->LineRow,
                                num->LineCol,
                                "Integer does not fit into given type");

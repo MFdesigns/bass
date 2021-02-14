@@ -74,9 +74,14 @@ ASTFloat::ASTFloat(
 
 ASTInt::ASTInt() : ASTNode(ASTType::INTEGER_NUMBER) {}
 
-ASTInt::ASTInt(
-    uint32_t pos, uint32_t size, uint32_t lineNr, uint32_t lineCol, int64_t num)
-    : ASTNode(ASTType::INTEGER_NUMBER, pos, size, lineNr, lineCol), Num(num) {}
+ASTInt::ASTInt(uint32_t pos,
+               uint32_t size,
+               uint32_t lineNr,
+               uint32_t lineCol,
+               int64_t num,
+               bool isSigned)
+    : ASTNode(ASTType::INTEGER_NUMBER, pos, size, lineNr, lineCol), Num(num),
+      IsSigned(isSigned) {}
 
 RegisterId::RegisterId(
     uint32_t pos, uint32_t size, uint32_t lineNr, uint32_t lineCol, uint8_t id)
