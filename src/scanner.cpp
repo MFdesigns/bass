@@ -144,6 +144,13 @@ bool Scanner::isRegister(std::string& token, uint8_t& tag) {
  * Skips the current line where the Cursor is on
  */
 void Scanner::skipLine() {
+    char c = ' ';
+    Src->getChar(Cursor, c);
+
+    if (c == '\n') {
+        return;
+    }
+
     char peek = peekChar();
     while (peek != 0 && peek != '\n') {
         incCursor();
@@ -204,16 +211,22 @@ bool Scanner::scanString(uint32_t& outSize) {
     bool strClosed = false;
     while (!strClosed) {
         c = eatChar();
-        if (c == '\n') {
-            validString = false;
-            break;
+        peek = peekChar();
+
+        // Ignore escaped quote and escaped backslash
+        if (c == '\\' && (peek == '"' || peek == '\\')) {
+            c = eatChar();
+            c = eatChar();
+            outSize += 2;
         }
 
         if (c == '"') {
             strClosed = true;
+        } else if (c == '\n' || peek == '\n') {
+            validString = false;
+            break;
         }
         outSize++;
-        peek = peekChar();
     }
 
     return validString;
@@ -439,6 +452,7 @@ bool Scanner::scanSource() {
                 uint32_t strSize = 0;
                 bool validString = scanString(strSize);
                 if (!validString) {
+                    validSource = false;
                     printError(Src, tokPos, strSize, tokLineRow, tokLineColumn,
                                "Unexpected character in string");
                     skipLine();
@@ -471,6 +485,7 @@ bool Scanner::scanSource() {
                 // Get word type and add it to tokens array
                 TokenType type = identifyWord(label, nullptr);
                 if (type != TokenType::IDENTIFIER) {
+                    validSource = false;
                     printError(Src, tokPos, labelSize, tokLineRow,
                                tokLineColumn,
                                "Keyword inside label identifier");

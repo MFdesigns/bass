@@ -213,7 +213,8 @@ void Parser::printTokenError(const char* msg, Token& tok) {
  * @param inStr String containing the input
  * @param outStr [out] String containing the parsed output
  */
-void Parser::parseString(std::string& inStr, std::string& outStr) {
+// TODO: RETURN ERROR VALUE
+void Parser::parseStringEscape(std::string& inStr, std::string& outStr) {
     // If string only consists of "" (two double quotes) string is empty so just
     // return
     if (inStr.size() == 2) {
@@ -227,8 +228,39 @@ void Parser::parseString(std::string& inStr, std::string& outStr) {
         char c = inStr[cursor];
         char p = inStr[cursor + 1];
 
-        if (c == '\\' && p == 'n') {
-            c = '\n';
+        if (c == '\\') {
+            switch (p) {
+            case 't':
+                c = 0x09;
+                break;
+            case 'v':
+                c = 0x0B;
+                break;
+            case '0':
+                c = 0x00;
+                break;
+            case 'b':
+                c = 0x08;
+                break;
+            case 'f':
+                c = 0x0C;
+                break;
+            case 'n':
+                c = 0x0A;
+                break;
+            case 'r':
+                c = 0x0D;
+                break;
+            case '"':
+                c = 0x22;
+                break;
+            case '\\':
+                c = 0x5C;
+                break;
+            default:
+                return;
+                break;
+            }
             cursor++;
         }
 
@@ -463,7 +495,7 @@ bool Parser::parseSectionVars(ASTSection* sec) {
 
         if (tok->Type == TokenType::STRING) {
             std::string parsedStr;
-            parseString(tokString, parsedStr);
+            parseStringEscape(tokString, parsedStr);
             ASTString* str = new ASTString(tok->Index, tok->Size, tok->LineRow,
                                            tok->LineCol, parsedStr);
             val = dynamic_cast<ASTNode*>(str);
