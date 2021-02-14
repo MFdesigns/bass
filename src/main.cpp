@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Michel Fäh
+ * Copyright 2020-2021 Michel Fäh
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,14 +20,20 @@
 #include <iostream>
 #include <vector>
 
+/**
+ * Prints usage information
+ */
 void printUsage() {
-    std::cout << "usage: bass <path>\n";
+    std::cout << "usage: bass <source-file> [output-file]\n";
 }
 
 int main(int argc, char* argv[]) {
+    char* outputDirArg = nullptr;
     if (argc < 2) {
         printUsage();
         return -1;
+    } else if (argc == 3) {
+        outputDirArg = argv[2];
     }
 
     // Build data structure used to type check instruction parameters
@@ -35,9 +41,15 @@ int main(int argc, char* argv[]) {
     buildInstrDefTree(instrDefs);
 
     // Create new assembler
-    Assembler asmler{&instrDefs};
+    Assembler asmler{&instrDefs, argv[1]};
 
-    bool fileReadSucc = asmler.readSource(argv[1]);
+    if (!asmler.setOutputDir(outputDirArg)) {
+        std::cout << "[ERROR] Output directory '" << outputDirArg
+                  << "' does not exist\n";
+        return -1;
+    }
+
+    bool fileReadSucc = asmler.readSource();
     if (!fileReadSucc) {
         std::cout << "[ERROR] Could not read source file '" << argv[1] << "'\n";
         return -1;

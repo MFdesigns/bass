@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2020 Michel Fäh
+// Copyright 2020-2021 Michel Fäh
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,9 +26,10 @@
 
 class Assembler {
   public:
-    Assembler(std::vector<InstrDefNode>* instrDefs);
+    Assembler(std::vector<InstrDefNode>* instrDefs, char* inFile);
     ~Assembler();
-    bool readSource(char* pathName);
+    bool setOutputDir(char* dir);
+    bool readSource();
     bool assemble();
 
   private:
@@ -37,5 +38,6 @@ class Assembler {
     SourceFile* Src = nullptr;
     Scanner* Scan = nullptr;
     std::vector<Token> Tokens;
-    std::filesystem::path File;
+    std::filesystem::path InFile;
+    std::filesystem::path OutFile;
 };

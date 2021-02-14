@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2020 Michel Fäh
+// Copyright 2020-2021 Michel Fäh
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,28 +23,52 @@
 /**
  * Constructs a new Assembler
  * @param instrDefs Vector of instruction definitons
+ * @param inFile Source file path
+ * @param outFile Output file path. Use default by passing nullptr
  */
-Assembler::Assembler(std::vector<InstrDefNode>* instrDefs)
-    : InstrDefs(instrDefs) {}
+Assembler::Assembler(std::vector<InstrDefNode>* instrDefs, char* inFile)
+    : InstrDefs(instrDefs), InFile(inFile) {}
 
+/**
+ * Assembler destructor
+ */
 Assembler::~Assembler() {
     delete Src;
     delete Scan;
 }
 
-bool Assembler::readSource(char* pathName) {
-    std::filesystem::path p{pathName};
-    if (!std::filesystem::exists(p)) {
-        std::cout << "[ERROR] Source file '" << pathName
-                  << "' does not exist\n";
+/**
+ * Sets the output directory. To select default output directory pass nullptr
+ * @param dir Output path or nullptr
+ * @return On success return true otherwise false
+ */
+bool Assembler::setOutputDir(char* dir) {
+    if (dir == nullptr) {
+        OutFile = InFile;
+        OutFile.replace_filename("a.ux");
+        return true;
+    }
+
+    OutFile = dir;
+    if (!std::filesystem::exists(OutFile.parent_path())) {
         return false;
     }
-    File = p;
+
+    return true;
+}
+
+/**
+ * Reads the previously set source file into a buffer
+ * @return On success return true otherwise false
+ */
+bool Assembler::readSource() {
+    if (!std::filesystem::exists(InFile)) {
+        return false;
+    }
 
     uint32_t size = 0;
-    // TODO: Add error checking
     // Get source file size
-    std::ifstream stream{p};
+    std::ifstream stream{InFile};
     stream.seekg(0, std::ios::end);
     size = stream.tellg();
     stream.seekg(0, std::ios::beg);
@@ -86,7 +110,7 @@ bool Assembler::assemble() {
         return false;
     }
 
-    Generator gen{&fileNode, &File, &labelDefs, &VarDecls};
+    Generator gen{&fileNode, &OutFile, &labelDefs, &VarDecls};
     gen.genBinary();
 
     return true;
