@@ -95,8 +95,7 @@ void OutputFileBuffer::write(size_t index, void* src, size_t size) {
 
         uint64_t adjOffset = adjRange->Start - buffEnd;
         std::memcpy(&adjRange->Buffer[adjOffset],
-                    &static_cast<uint8_t*>(src)[sliceOffset],
-                    buffEnd - index + 1);
+                    &static_cast<uint8_t*>(src)[sliceOffset], size - sliceOffset);
     }
 }
 
